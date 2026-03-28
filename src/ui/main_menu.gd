@@ -24,6 +24,10 @@ var cannon_y: float
 var cannon_angle: float = 0.0
 var next_letter: String = ""
 var projectiles: Array[Dictionary] = []
+var pending_action: Callable
+var pending_timer: float = -1.0
+var play_completed: bool = false
+var settings_completed: bool = false
 
 func _ready() -> void:
 	font = preload("res://assets/fonts/DM_Sans/DMSans-Regular.ttf")
@@ -79,7 +83,12 @@ func _process(delta: float) -> void:
 		var proj_target: Rect2 = projectiles[i].get("target_rect", Rect2())
 		# Action projectile: check collision with its target rect
 		if proj_action.is_valid() and proj_target.has_point(p):
-			proj_action.call()
+			if proj_target == play_rect:
+				play_completed = true
+			elif proj_target == settings_rect:
+				settings_completed = true
+			pending_action = proj_action
+			pending_timer = 0.5
 			to_remove.append(i)
 			continue
 		# Decorative projectile: remove on any button collision
@@ -91,6 +100,16 @@ func _process(delta: float) -> void:
 			to_remove.append(i)
 	for i in range(to_remove.size() - 1, -1, -1):
 		projectiles.remove_at(to_remove[i])
+
+	# Pending button action timer
+	if pending_timer >= 0:
+		pending_timer -= delta
+		if pending_timer <= 0:
+			pending_timer = -1.0
+			if pending_action.is_valid():
+				pending_action.call()
+			play_completed = false
+			settings_completed = false
 
 	if hover_play != was_hover_play or hover_settings != was_hover_settings or hover_en != was_hover_en or hover_ru != was_hover_ru or not projectiles.is_empty():
 		queue_redraw()
@@ -156,11 +175,11 @@ func _draw() -> void:
 	draw_string(font_bold, Vector2(screen_size.x / 2.0 - title_size.x / 2.0, screen_size.y / 2.0 - 100), title_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 52, Color("#1A1A1A"))
 
 	# Play button
-	var play_missing_idx: int = PLAY_MISSING.get(GameManager.language, 0)
+	var play_missing_idx: int = -1 if play_completed else PLAY_MISSING.get(GameManager.language, 0)
 	_draw_button(play_rect, GameManager.tr_text("PLAY"), hover_play, play_missing_idx)
 
 	# Settings button
-	var settings_missing_idx: int = SETTINGS_MISSING.get(GameManager.language, 0)
+	var settings_missing_idx: int = -1 if settings_completed else SETTINGS_MISSING.get(GameManager.language, 0)
 	_draw_button(settings_rect, GameManager.tr_text("SETTINGS"), hover_settings, settings_missing_idx)
 
 	# Cannon platform
