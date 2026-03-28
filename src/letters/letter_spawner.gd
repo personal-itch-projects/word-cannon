@@ -51,7 +51,7 @@ func _find_free_x_position() -> float:
 func _is_x_clear(x: float) -> bool:
 	const MIN_SPACING := 60.0
 	for flock in flock_manager.flocks:
-		var rect := flock.get_bounding_rect()
+		var rect: Rect2 = flock.get_bounding_rect()
 		if x > rect.position.x - MIN_SPACING and x < rect.end.x + MIN_SPACING:
 			return false
 	return true
