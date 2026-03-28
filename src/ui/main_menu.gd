@@ -1,5 +1,12 @@
 extends Control
 
+const ALPHABET := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const PLATFORM_WIDTH := 100.0
+const PLATFORM_HEIGHT := 16.0
+const CANNON_WIDTH := 8.0
+const CANNON_HEIGHT := 30.0
+const PROJECTILE_SPEED := 500.0
+
 var font: Font
 var font_bold: Font
 var play_rect: Rect2
@@ -7,6 +14,13 @@ var settings_rect: Rect2
 var hover_play: bool = false
 var hover_settings: bool = false
 var screen_size: Vector2
+var cannon_x: float
+var cannon_y: float
+var cannon_angle: float = 0.0
+var next_letter: String = ""
+var projectiles: Array[Dictionary] = []
+var pending_action: Callable
+var pending_timer: float = -1.0
 
 func _ready() -> void:
 	font = preload("res://assets/fonts/DM_Sans/DMSans-Regular.ttf")
@@ -16,26 +30,86 @@ func _ready() -> void:
 	var center_y: float = screen_size.y / 2.0
 	play_rect = Rect2(center_x - 100, center_y - 30, 200, 50)
 	settings_rect = Rect2(center_x - 100, center_y + 40, 200, 50)
+	cannon_x = screen_size.x / 2.0
+	cannon_y = screen_size.y - 50
+	_pick_next_letter()
 
-func _process(_delta: float) -> void:
+func _pick_next_letter() -> void:
+	next_letter = ALPHABET[randi() % ALPHABET.length()]
+
+func _process(delta: float) -> void:
+	if not visible:
+		return
 	var mouse_pos := get_viewport().get_mouse_position()
 	var was_hover_play := hover_play
 	var was_hover_settings := hover_settings
-	hover_play = play_rect.has_point(mouse_pos) and visible
-	hover_settings = settings_rect.has_point(mouse_pos) and visible
-	if hover_play != was_hover_play or hover_settings != was_hover_settings:
+	hover_play = play_rect.has_point(mouse_pos)
+	hover_settings = settings_rect.has_point(mouse_pos)
+
+	# Move cannon toward cursor x
+	cannon_x = clampf(mouse_pos.x, PLATFORM_WIDTH / 2.0, screen_size.x - PLATFORM_WIDTH / 2.0)
+
+	# Update cannon angle
+	var cannon_tip := Vector2(cannon_x, cannon_y - PLATFORM_HEIGHT / 2.0)
+	var dir_to_mouse := (mouse_pos - cannon_tip).normalized()
+	cannon_angle = atan2(dir_to_mouse.x, -dir_to_mouse.y)
+	cannon_angle = clampf(cannon_angle, -PI / 3.0, PI / 3.0)
+
+	# Update projectiles
+	var to_remove: Array[int] = []
+	for i in projectiles.size():
+		projectiles[i]["pos"] += projectiles[i]["vel"] * delta
+		var p: Vector2 = projectiles[i]["pos"]
+		# Check button collisions
+		if play_rect.has_point(p) or settings_rect.has_point(p):
+			to_remove.append(i)
+			continue
+		# Remove if off screen
+		if p.y < -50 or p.x < -50 or p.x > screen_size.x + 50:
+			to_remove.append(i)
+	for i in range(to_remove.size() - 1, -1, -1):
+		projectiles.remove_at(to_remove[i])
+
+	# Pending button action timer
+	if pending_timer >= 0:
+		pending_timer -= delta
+		if pending_timer <= 0:
+			pending_timer = -1.0
+			if pending_action.is_valid():
+				pending_action.call()
+
+	if hover_play != was_hover_play or hover_settings != was_hover_settings or not projectiles.is_empty():
+		queue_redraw()
+	else:
 		queue_redraw()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		if play_rect.has_point(event.position):
-			GameManager.start_game()
+		var target := event.position as Vector2
+		var action: Callable = Callable()
+		if play_rect.has_point(target):
+			target = play_rect.get_center()
+			action = GameManager.start_game
 			get_viewport().set_input_as_handled()
-		elif settings_rect.has_point(event.position):
-			GameManager.open_settings()
+		elif settings_rect.has_point(target):
+			target = settings_rect.get_center()
+			action = GameManager.open_settings
 			get_viewport().set_input_as_handled()
+		_shoot_toward(target, action)
+
+func _shoot_toward(target: Vector2, action: Callable) -> void:
+	var cannon_tip := Vector2(cannon_x, cannon_y - PLATFORM_HEIGHT / 2.0 - CANNON_HEIGHT)
+	var dir := (target - cannon_tip).normalized()
+	if dir.y > -0.1:
+		dir = Vector2(dir.x, -0.1).normalized()
+	var vel := dir * PROJECTILE_SPEED
+	projectiles.append({"pos": cannon_tip, "vel": vel, "letter": next_letter})
+	_pick_next_letter()
+	if action.is_valid():
+		pending_action = action
+		pending_timer = 0.15
 
 func _draw() -> void:
 	# Title
@@ -48,6 +122,25 @@ func _draw() -> void:
 
 	# Settings button
 	_draw_button(settings_rect, "SETTINGS", hover_settings)
+
+	# Cannon platform
+	var platform_rect := Rect2(cannon_x - PLATFORM_WIDTH / 2.0, cannon_y - PLATFORM_HEIGHT / 2.0, PLATFORM_WIDTH, PLATFORM_HEIGHT)
+	draw_rect(platform_rect, Color("#1A1A1A"))
+
+	# Cannon barrel (rotated)
+	draw_set_transform(Vector2(cannon_x, cannon_y - PLATFORM_HEIGHT / 2.0), cannon_angle)
+	var cannon_rect := Rect2(-CANNON_WIDTH / 2.0, -CANNON_HEIGHT, CANNON_WIDTH, CANNON_HEIGHT)
+	draw_rect(cannon_rect, Color("#1A1A1A"))
+	if next_letter != "":
+		var text_size := font.get_string_size(next_letter, HORIZONTAL_ALIGNMENT_CENTER, -1, 18)
+		draw_string(font, Vector2(-text_size.x / 2.0, -CANNON_HEIGHT - 8), next_letter, HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color("#1A1A1A"))
+	draw_set_transform(Vector2.ZERO)
+
+	# Projectiles
+	for p in projectiles:
+		var text_size := font.get_string_size(p["letter"], HORIZONTAL_ALIGNMENT_CENTER, -1, 32)
+		var offset := -text_size / 2.0
+		draw_string(font, p["pos"] + Vector2(offset.x, -offset.y), p["letter"], HORIZONTAL_ALIGNMENT_CENTER, -1, 32, Color("#1A1A1A"))
 
 func _draw_button(rect: Rect2, text: String, hovered: bool) -> void:
 	var bg_color := Color.WHITE
