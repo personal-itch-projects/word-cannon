@@ -34,9 +34,9 @@ func _process(delta: float) -> void:
 
 	# Movement
 	var direction := 0.0
-	if Input.is_action_pressed("ui_left"):
+	if Input.is_action_pressed("move_left"):
 		direction = -1.0
-	if Input.is_action_pressed("ui_right"):
+	if Input.is_action_pressed("move_right"):
 		direction = 1.0
 	position.x += direction * MOVE_SPEED * delta
 	position.x = clampf(position.x, PLATFORM_WIDTH / 2.0, screen_width - PLATFORM_WIDTH / 2.0)
