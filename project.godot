@@ -17,6 +17,7 @@ run/main_scene="res://src/game_scene/main.tscn"
 
 [autoload]
 
+WordDictionary="*res://src/singletons/word_dictionary.gd"
 GameManager="*res://src/singletons/game_manager.gd"
 
 [display]
