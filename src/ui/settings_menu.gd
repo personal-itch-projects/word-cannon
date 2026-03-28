@@ -62,6 +62,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			queue_redraw()
 			get_viewport().set_input_as_handled()
 		elif language_rect.has_point(event.position):
+			waiting_for_key = ""
 			if GameManager.language == "en":
 				GameManager.language = "ru"
 			else:
@@ -70,6 +71,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			queue_redraw()
 			get_viewport().set_input_as_handled()
 		elif datasource_rect.has_point(event.position):
+			waiting_for_key = ""
 			if GameManager.datasource == "lemma":
 				GameManager.datasource = "kaikki"
 			else:
@@ -94,7 +96,7 @@ func _draw() -> void:
 		left_text = GameManager.tr_text("Press key...")
 	else:
 		left_text = GameManager.tr_text("Move Left:") + " " + OS.get_keycode_string(GameManager.bindings["move_left"])
-	_draw_button(move_left_rect, left_text, hover_move_left or waiting_for_key == "move_left")
+	_draw_button(move_left_rect, left_text, hover_move_left, waiting_for_key == "move_left")
 
 	# Move Right rebind
 	var right_text: String
@@ -102,7 +104,7 @@ func _draw() -> void:
 		right_text = GameManager.tr_text("Press key...")
 	else:
 		right_text = GameManager.tr_text("Move Right:") + " " + OS.get_keycode_string(GameManager.bindings["move_right"])
-	_draw_button(move_right_rect, right_text, hover_move_right or waiting_for_key == "move_right")
+	_draw_button(move_right_rect, right_text, hover_move_right, waiting_for_key == "move_right")
 
 	# Language toggle
 	var lang_key := "Language: Russian" if GameManager.language == "ru" else "Language: English"
@@ -115,9 +117,9 @@ func _draw() -> void:
 	# Back button
 	_draw_button(back_rect, GameManager.tr_text("BACK"), hover_back)
 
-func _draw_button(rect: Rect2, text: String, hovered: bool) -> void:
-	var bg_color := Color.WHITE
-	var border_color := Color("#1A1A1A") if not hovered else Color("#CC3333")
+func _draw_button(rect: Rect2, text: String, hovered: bool, active: bool = false) -> void:
+	var bg_color := Color("#FFF3CC") if active else Color.WHITE
+	var border_color := Color("#CC3333") if hovered or active else Color("#1A1A1A")
 	draw_rect(rect, bg_color)
 	draw_rect(rect, border_color, false, 2.0)
 	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, 24)
