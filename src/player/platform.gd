@@ -34,9 +34,11 @@ func _process(delta: float) -> void:
 
 	# Movement
 	var direction := 0.0
-	if Input.is_action_pressed("move_left"):
+	var left_action := "ui_left" if GameManager.use_arrow_keys else "move_left"
+	var right_action := "ui_right" if GameManager.use_arrow_keys else "move_right"
+	if Input.is_action_pressed(left_action):
 		direction = -1.0
-	if Input.is_action_pressed("move_right"):
+	if Input.is_action_pressed(right_action):
 		direction = 1.0
 	position.x += direction * MOVE_SPEED * delta
 	position.x = clampf(position.x, PLATFORM_WIDTH / 2.0, screen_width - PLATFORM_WIDTH / 2.0)

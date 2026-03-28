@@ -18,6 +18,7 @@ var score: int = 0
 var lives: int = 3
 var current_level: int = 0
 var level_timer: float = 0.0
+var use_arrow_keys: bool = false
 
 func _process(delta: float) -> void:
 	if current_state != GameState.State.PLAYING:
