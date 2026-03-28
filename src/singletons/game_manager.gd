@@ -18,7 +18,10 @@ var score: int = 0
 var lives: int = 3
 var current_level: int = 0
 var level_timer: float = 0.0
-var use_arrow_keys: bool = false
+var bindings: Dictionary = {
+	"move_left": KEY_A,
+	"move_right": KEY_D,
+}
 var language: String = "en"
 var datasource: String = "lemma"
 
@@ -27,8 +30,9 @@ var _translations: Dictionary = {
 	"PLAY": {"en": "PLAY", "ru": "ИГРАТЬ"},
 	"SETTINGS": {"en": "SETTINGS", "ru": "НАСТРОЙКИ"},
 	"BACK": {"en": "BACK", "ru": "НАЗАД"},
-	"Controls: A/D": {"en": "Controls: A/D", "ru": "Управление: A/D"},
-	"Controls: Arrows": {"en": "Controls: Arrows", "ru": "Управление: Стрелки"},
+	"Move Left:": {"en": "Move Left:", "ru": "Влево:"},
+	"Move Right:": {"en": "Move Right:", "ru": "Вправо:"},
+	"Press key...": {"en": "Press key...", "ru": "Нажмите..."},
 	"Language: English": {"en": "Language: English", "ru": "Язык: English"},
 	"Language: Russian": {"en": "Language: Russian", "ru": "Язык: Русский"},
 	"Dict: Lemma": {"en": "Dict: Lemma", "ru": "Словарь: Lemma"},
