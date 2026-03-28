@@ -5,6 +5,8 @@ const PLATFORM_HEIGHT := 16.0
 const CANNON_WIDTH := 8.0
 const CANNON_HEIGHT := 30.0
 const PROJECTILE_SPEED := 500.0
+const PLAY_MISSING := {"en": 3, "ru": 0}
+const SETTINGS_MISSING := {"en": 0, "ru": 0}
 
 var font: Font
 var font_bold: Font
@@ -22,8 +24,6 @@ var cannon_y: float
 var cannon_angle: float = 0.0
 var next_letter: String = ""
 var projectiles: Array[Dictionary] = []
-var pending_action: Callable
-var pending_timer: float = -1.0
 
 func _ready() -> void:
 	font = preload("res://assets/fonts/DM_Sans/DMSans-Regular.ttf")
@@ -42,6 +42,11 @@ func _ready() -> void:
 func _pick_next_letter() -> void:
 	var alphabet := WordDictionary.get_alphabet()
 	next_letter = alphabet[randi() % alphabet.length()]
+
+func _get_missing_letter(text: String, missing_index: int) -> String:
+	if missing_index >= 0 and missing_index < text.length():
+		return text[missing_index]
+	return ""
 
 func _process(delta: float) -> void:
 	if not visible:
@@ -70,8 +75,15 @@ func _process(delta: float) -> void:
 	for i in projectiles.size():
 		projectiles[i]["pos"] += projectiles[i]["vel"] * delta
 		var p: Vector2 = projectiles[i]["pos"]
-		# Check button collisions
-		if play_rect.has_point(p) or settings_rect.has_point(p):
+		var proj_action: Callable = projectiles[i].get("action", Callable())
+		var proj_target: Rect2 = projectiles[i].get("target_rect", Rect2())
+		# Action projectile: check collision with its target rect
+		if proj_action.is_valid() and proj_target.has_point(p):
+			proj_action.call()
+			to_remove.append(i)
+			continue
+		# Decorative projectile: remove on any button collision
+		if not proj_action.is_valid() and (play_rect.has_point(p) or settings_rect.has_point(p)):
 			to_remove.append(i)
 			continue
 		# Remove if off screen
@@ -79,14 +91,6 @@ func _process(delta: float) -> void:
 			to_remove.append(i)
 	for i in range(to_remove.size() - 1, -1, -1):
 		projectiles.remove_at(to_remove[i])
-
-	# Pending button action timer
-	if pending_timer >= 0:
-		pending_timer -= delta
-		if pending_timer <= 0:
-			pending_timer = -1.0
-			if pending_action.is_valid():
-				pending_action.call()
 
 	if hover_play != was_hover_play or hover_settings != was_hover_settings or hover_en != was_hover_en or hover_ru != was_hover_ru or not projectiles.is_empty():
 		queue_redraw()
@@ -98,7 +102,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var target := event.position as Vector2
-		var action: Callable = Callable()
 		if en_rect.has_point(target):
 			_set_language("en")
 			get_viewport().set_input_as_handled()
@@ -108,14 +111,21 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 		elif play_rect.has_point(target):
-			target = play_rect.get_center()
-			action = GameManager.start_game
+			var play_text := GameManager.tr_text("PLAY")
+			var missing_idx: int = PLAY_MISSING.get(GameManager.language, 0)
+			var letter := _get_missing_letter(play_text, missing_idx)
+			_shoot_toward(play_rect.get_center(), letter, GameManager.start_game, play_rect)
 			get_viewport().set_input_as_handled()
+			return
 		elif settings_rect.has_point(target):
-			target = settings_rect.get_center()
-			action = GameManager.open_settings
+			var settings_text := GameManager.tr_text("SETTINGS")
+			var missing_idx: int = SETTINGS_MISSING.get(GameManager.language, 0)
+			var letter := _get_missing_letter(settings_text, missing_idx)
+			_shoot_toward(settings_rect.get_center(), letter, GameManager.open_settings, settings_rect)
 			get_viewport().set_input_as_handled()
-		_shoot_toward(target, action)
+			return
+		_shoot_toward(target, next_letter, Callable(), Rect2())
+		_pick_next_letter()
 
 func _set_language(lang: String) -> void:
 	GameManager.language = lang
@@ -123,17 +133,17 @@ func _set_language(lang: String) -> void:
 	_pick_next_letter()
 	queue_redraw()
 
-func _shoot_toward(target: Vector2, action: Callable) -> void:
+func _shoot_toward(target: Vector2, letter: String, action: Callable, target_rect: Rect2) -> void:
 	var cannon_tip := Vector2(cannon_x, cannon_y - PLATFORM_HEIGHT / 2.0 - CANNON_HEIGHT)
 	var dir := (target - cannon_tip).normalized()
 	if dir.y > -0.1:
 		dir = Vector2(dir.x, -0.1).normalized()
 	var vel := dir * PROJECTILE_SPEED
-	projectiles.append({"pos": cannon_tip, "vel": vel, "letter": next_letter})
-	_pick_next_letter()
+	var proj := {"pos": cannon_tip, "vel": vel, "letter": letter}
 	if action.is_valid():
-		pending_action = action
-		pending_timer = 0.15
+		proj["action"] = action
+		proj["target_rect"] = target_rect
+	projectiles.append(proj)
 
 func _draw() -> void:
 	# Language toggle (top-right)
@@ -146,10 +156,12 @@ func _draw() -> void:
 	draw_string(font_bold, Vector2(screen_size.x / 2.0 - title_size.x / 2.0, screen_size.y / 2.0 - 100), title_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 52, Color("#1A1A1A"))
 
 	# Play button
-	_draw_button(play_rect, GameManager.tr_text("PLAY"), hover_play)
+	var play_missing_idx: int = PLAY_MISSING.get(GameManager.language, 0)
+	_draw_button(play_rect, GameManager.tr_text("PLAY"), hover_play, play_missing_idx)
 
 	# Settings button
-	_draw_button(settings_rect, GameManager.tr_text("SETTINGS"), hover_settings)
+	var settings_missing_idx: int = SETTINGS_MISSING.get(GameManager.language, 0)
+	_draw_button(settings_rect, GameManager.tr_text("SETTINGS"), hover_settings, settings_missing_idx)
 
 	# Cannon platform
 	var platform_rect := Rect2(cannon_x - PLATFORM_WIDTH / 2.0, cannon_y - PLATFORM_HEIGHT / 2.0, PLATFORM_WIDTH, PLATFORM_HEIGHT)
@@ -170,14 +182,23 @@ func _draw() -> void:
 		var offset := -text_size / 2.0
 		draw_string(font, p["pos"] + Vector2(offset.x, -offset.y), p["letter"], HORIZONTAL_ALIGNMENT_CENTER, -1, 32, Color("#1A1A1A"))
 
-func _draw_button(rect: Rect2, text: String, hovered: bool) -> void:
+func _draw_button(rect: Rect2, text: String, hovered: bool, missing_index: int = -1) -> void:
 	var bg_color := Color.WHITE
 	var border_color := Color("#1A1A1A") if not hovered else Color("#CC3333")
 	draw_rect(rect, bg_color)
 	draw_rect(rect, border_color, false, 2.0)
 	var text_size := font_bold.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, 24)
 	var text_pos := Vector2(rect.position.x + rect.size.x / 2.0 - text_size.x / 2.0, rect.position.y + rect.size.y / 2.0 + text_size.y / 4.0)
-	draw_string(font_bold, text_pos, text, HORIZONTAL_ALIGNMENT_CENTER, -1, 24, Color("#1A1A1A"))
+	if missing_index < 0:
+		draw_string(font_bold, text_pos, text, HORIZONTAL_ALIGNMENT_CENTER, -1, 24, Color("#1A1A1A"))
+	else:
+		var x_offset := 0.0
+		for i in text.length():
+			var ch := text[i]
+			var ch_size := font_bold.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1, 24)
+			var color := Color("#1A1A1A", 0.15) if i == missing_index else Color("#1A1A1A")
+			draw_string(font_bold, text_pos + Vector2(x_offset, 0), ch, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, color)
+			x_offset += ch_size.x
 
 func _draw_lang_button(rect: Rect2, text: String, active: bool, hovered: bool) -> void:
 	var bg_color := Color("#1A1A1A") if active else Color.WHITE
