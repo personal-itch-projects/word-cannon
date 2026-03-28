@@ -8,10 +8,11 @@ var velocity: Vector2 = Vector2(0, -SPEED)
 var flock_manager: Node2D
 var font: Font
 
-func setup(p_letter: String, p_position: Vector2, p_flock_manager: Node2D) -> void:
+func setup(p_letter: String, p_position: Vector2, p_flock_manager: Node2D, p_velocity: Vector2 = Vector2(0, -SPEED)) -> void:
 	letter = p_letter
 	position = p_position
 	flock_manager = p_flock_manager
+	velocity = p_velocity
 	font = preload("res://assets/fonts/DM_Sans/DMSans-Regular.ttf")
 
 func _process(delta: float) -> void:
