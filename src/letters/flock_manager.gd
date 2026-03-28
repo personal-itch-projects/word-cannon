@@ -23,7 +23,7 @@ func _try_click_flock(click_pos: Vector2) -> void:
 	for i in range(flocks.size() - 1, -1, -1):
 		var flock: Node2D = flocks[i]
 		if flock.scorable and flock.get_bounding_rect().has_point(click_pos):
-			var best := flock._get_best_word()
+			var best: Dictionary = flock._get_best_word()
 			var score := _calculate_score(best["word"].length(), best["frequency"])
 			GameManager.add_score(score)
 			_remove_flock(i)
