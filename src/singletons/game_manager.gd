@@ -7,10 +7,10 @@ signal level_changed(new_level: int)
 
 const MAX_LIVES := 3
 const LEVELS := [
-	{ "letter_count": 5, "fall_speed": 60.0, "spawn_min": 1.2, "spawn_max": 2.5, "duration": 30.0 },
-	{ "letter_count": 10, "fall_speed": 80.0, "spawn_min": 0.8, "spawn_max": 2.0, "duration": 30.0 },
-	{ "letter_count": 16, "fall_speed": 100.0, "spawn_min": 0.6, "spawn_max": 1.5, "duration": 30.0 },
-	{ "letter_count": -1, "fall_speed": 120.0, "spawn_min": 0.4, "spawn_max": 1.0, "duration": 30.0 },
+	{ "letter_count": 5, "fall_speed": 10.0, "spawn_min": 1.2, "spawn_max": 2.5, "duration": 30.0 },
+	{ "letter_count": 10, "fall_speed": 15.0, "spawn_min": 0.8, "spawn_max": 2.0, "duration": 30.0 },
+	{ "letter_count": 16, "fall_speed": 20.0, "spawn_min": 0.6, "spawn_max": 1.5, "duration": 30.0 },
+	{ "letter_count": -1, "fall_speed": 25.0, "spawn_min": 0.4, "spawn_max": 1.0, "duration": 30.0 },
 ]
 
 var current_state: GameState.State = GameState.State.MAIN_MENU
@@ -20,6 +20,28 @@ var current_level: int = 0
 var level_timer: float = 0.0
 var use_arrow_keys: bool = false
 var language: String = "en"
+
+var _translations: Dictionary = {
+	"LETTER FALL": {"en": "LETTER FALL", "ru": "БУКВОПАД"},
+	"PLAY": {"en": "PLAY", "ru": "ИГРАТЬ"},
+	"SETTINGS": {"en": "SETTINGS", "ru": "НАСТРОЙКИ"},
+	"BACK": {"en": "BACK", "ru": "НАЗАД"},
+	"Controls: A/D": {"en": "Controls: A/D", "ru": "Управление: A/D"},
+	"Controls: Arrows": {"en": "Controls: Arrows", "ru": "Управление: Стрелки"},
+	"Language: English": {"en": "Language: English", "ru": "Язык: English"},
+	"Language: Russian": {"en": "Language: Russian", "ru": "Язык: Русский"},
+	"SCORE": {"en": "SCORE", "ru": "СЧЁТ"},
+	"LEVEL": {"en": "LEVEL", "ru": "УРОВЕНЬ"},
+	"GAME OVER": {"en": "GAME OVER", "ru": "КОНЕЦ ИГРЫ"},
+	"Score:": {"en": "Score:", "ru": "Счёт:"},
+	"RESTART": {"en": "RESTART", "ru": "ЗАНОВО"},
+	"MENU": {"en": "MENU", "ru": "МЕНЮ"},
+}
+
+func tr_text(key: String) -> String:
+	if _translations.has(key):
+		return _translations[key].get(language, key)
+	return key
 
 func _process(delta: float) -> void:
 	if current_state != GameState.State.PLAYING:

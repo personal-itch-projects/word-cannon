@@ -24,10 +24,10 @@ func _on_level_changed(_level: int) -> void:
 
 func _draw() -> void:
 	# Score
-	draw_string(font_bold, Vector2(20, 40), "SCORE: " + str(GameManager.score), HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color("#1A1A1A"))
+	draw_string(font_bold, Vector2(20, 40), GameManager.tr_text("SCORE") + ": " + str(GameManager.score), HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color("#1A1A1A"))
 
 	# Level
-	draw_string(font_bold, Vector2(20, 70), "LEVEL: " + str(GameManager.current_level + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color("#1A1A1A"))
+	draw_string(font_bold, Vector2(20, 70), GameManager.tr_text("LEVEL") + ": " + str(GameManager.current_level + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color("#1A1A1A"))
 
 	# Lives
 	var lives_text := ""

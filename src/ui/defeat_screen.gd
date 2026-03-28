@@ -40,20 +40,20 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, screen_size), Color(0, 0, 0, 0.6))
 
 	# Game Over title
-	var title := "GAME OVER"
+	var title := GameManager.tr_text("GAME OVER")
 	var title_size := font.get_string_size(title, HORIZONTAL_ALIGNMENT_CENTER, -1, 52)
 	draw_string(font, Vector2(screen_size.x / 2.0 - title_size.x / 2.0, screen_size.y / 2.0 - 60), title, HORIZONTAL_ALIGNMENT_CENTER, -1, 52, Color.WHITE)
 
 	# Score
-	var score_text := "Score: " + str(GameManager.score)
+	var score_text := GameManager.tr_text("Score:") + " " + str(GameManager.score)
 	var score_size := font.get_string_size(score_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 32)
 	draw_string(font, Vector2(screen_size.x / 2.0 - score_size.x / 2.0, screen_size.y / 2.0), score_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 32, Color.WHITE)
 
 	# Restart button
-	_draw_button(restart_rect, "RESTART", hover_restart)
+	_draw_button(restart_rect, GameManager.tr_text("RESTART"), hover_restart)
 
 	# Menu button
-	_draw_button(menu_rect, "MENU", hover_menu)
+	_draw_button(menu_rect, GameManager.tr_text("MENU"), hover_menu)
 
 func _draw_button(rect: Rect2, text: String, hovered: bool) -> void:
 	var bg_color := Color.WHITE

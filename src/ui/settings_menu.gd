@@ -51,20 +51,20 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _draw() -> void:
 	# Title
-	var title := "SETTINGS"
+	var title := GameManager.tr_text("SETTINGS")
 	var title_size := font.get_string_size(title, HORIZONTAL_ALIGNMENT_CENTER, -1, 42)
 	draw_string(font, Vector2(screen_size.x / 2.0 - title_size.x / 2.0, screen_size.y / 2.0 - 40), title, HORIZONTAL_ALIGNMENT_CENTER, -1, 42, Color("#1A1A1A"))
 
 	# Controls toggle
-	var controls_label := "Controls: Arrows" if GameManager.use_arrow_keys else "Controls: A/D"
-	_draw_button(controls_rect, controls_label, hover_controls)
+	var controls_key := "Controls: Arrows" if GameManager.use_arrow_keys else "Controls: A/D"
+	_draw_button(controls_rect, GameManager.tr_text(controls_key), hover_controls)
 
 	# Language toggle
-	var lang_label := "Language: Russian" if GameManager.language == "ru" else "Language: English"
-	_draw_button(language_rect, lang_label, hover_language)
+	var lang_key := "Language: Russian" if GameManager.language == "ru" else "Language: English"
+	_draw_button(language_rect, GameManager.tr_text(lang_key), hover_language)
 
 	# Back button
-	_draw_button(back_rect, "BACK", hover_back)
+	_draw_button(back_rect, GameManager.tr_text("BACK"), hover_back)
 
 func _draw_button(rect: Rect2, text: String, hovered: bool) -> void:
 	var bg_color := Color.WHITE
