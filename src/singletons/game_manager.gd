@@ -7,9 +7,9 @@ signal level_changed(new_level: int)
 
 const MAX_LIVES := 3
 const LEVELS := [
-	{ "letter_count": 5, "fall_speed": 10.0, "spawn_min": 1.2, "spawn_max": 2.5, "duration": 30.0 },
-	{ "letter_count": 10, "fall_speed": 15.0, "spawn_min": 0.8, "spawn_max": 2.0, "duration": 30.0 },
-	{ "letter_count": 16, "fall_speed": 20.0, "spawn_min": 0.6, "spawn_max": 1.5, "duration": 30.0 },
+	{ "letter_count": -1, "fall_speed": 10.0, "spawn_min": 1.2, "spawn_max": 2.5, "duration": 30.0 },
+	{ "letter_count": -1, "fall_speed": 15.0, "spawn_min": 0.8, "spawn_max": 2.0, "duration": 30.0 },
+	{ "letter_count": -1, "fall_speed": 20.0, "spawn_min": 0.6, "spawn_max": 1.5, "duration": 30.0 },
 	{ "letter_count": -1, "fall_speed": 25.0, "spawn_min": 0.4, "spawn_max": 1.0, "duration": 30.0 },
 ]
 
