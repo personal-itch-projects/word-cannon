@@ -35,21 +35,7 @@ func is_click_on_scorable(click_pos: Vector2) -> bool:
 			return true
 	return false
 
-func create_flock_for_letter(letter_node: Node2D) -> Node2D:
-	var flock_scene := preload("res://src/letters/flock.gd")
-	var flock := Node2D.new()
-	flock.set_script(flock_scene)
-	flock.position = letter_node.position
-	letter_node.position = Vector2.ZERO
-	letter_node.velocity = Vector2.ZERO
-	flock.add_child(letter_node)
-	flock.letters.append(letter_node)
-	flock._update_scorable()
-	add_child(flock)
-	flocks.append(flock)
-	return flock
-
-func create_flock_for_partial_word(letter_nodes: Array[Node2D], spawn_pos: Vector2) -> Node2D:
+func create_flock(letter_nodes: Array[Node2D], spawn_pos: Vector2) -> Node2D:
 	var flock_scene := preload("res://src/letters/flock.gd")
 	var flock := Node2D.new()
 	flock.set_script(flock_scene)
@@ -59,7 +45,8 @@ func create_flock_for_partial_word(letter_nodes: Array[Node2D], spawn_pos: Vecto
 		letter_node.velocity = Vector2.ZERO
 		flock.add_child(letter_node)
 		flock.letters.append(letter_node)
-	flock._arrange_letters()
+	if flock.letters.size() > 1:
+		flock._arrange_letters()
 	flock._update_scorable()
 	add_child(flock)
 	flocks.append(flock)

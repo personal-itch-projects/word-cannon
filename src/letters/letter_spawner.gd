@@ -46,15 +46,14 @@ func _spawn_single_letter() -> void:
 	var allowed: String = GameManager.get_allowed_letters()
 	var rand_letter := WordDictionary.pick_weighted_letter(allowed)
 	letter_node.setup(rand_letter, Vector2(x_pos, -30))
-	flock_manager.create_flock_for_letter(letter_node)
+	flock_manager.create_flock([letter_node] as Array[Node2D], letter_node.position)
 
 func _spawn_partial_word(gaps: int) -> void:
-	var partial := WordDictionary.pick_partial_word(gaps)
-	if partial.is_empty():
+	var kept_letters := WordDictionary.pick_partial_word(gaps)
+	if kept_letters.is_empty():
 		_spawn_single_letter()
 		return
-	var kept_letters: Array = partial["letters"]
-	var x_pos := _find_free_x_position_for_word(kept_letters.size())
+	var x_pos := _find_free_x_position(kept_letters.size())
 	if x_pos < 0:
 		return
 	var FallingLetterScript := preload("res://src/letters/falling_letter.gd")
@@ -64,17 +63,9 @@ func _spawn_partial_word(gaps: int) -> void:
 		letter_node.set_script(FallingLetterScript)
 		letter_node.setup(letter_char, Vector2.ZERO)
 		letter_nodes.append(letter_node)
-	flock_manager.create_flock_for_partial_word(letter_nodes, Vector2(x_pos, -30))
+	flock_manager.create_flock(letter_nodes, Vector2(x_pos, -30))
 
-func _find_free_x_position() -> float:
-	const MAX_ATTEMPTS := 10
-	for _attempt in MAX_ATTEMPTS:
-		var x := randf_range(40, screen_width - 40)
-		if _is_x_clear(x):
-			return x
-	return -1.0
-
-func _find_free_x_position_for_word(letter_count: int) -> float:
+func _find_free_x_position(letter_count: int = 1) -> float:
 	const MAX_ATTEMPTS := 10
 	const GRID_CELL := 44.0
 	var word_extent := (letter_count - 1) * GRID_CELL
@@ -87,14 +78,6 @@ func _find_free_x_position_for_word(letter_count: int) -> float:
 		if _is_x_range_clear(x, word_extent):
 			return x
 	return -1.0
-
-func _is_x_clear(x: float) -> bool:
-	const MIN_SPACING := 60.0
-	for flock in flock_manager.flocks:
-		var rect: Rect2 = flock.get_bounding_rect()
-		if x > rect.position.x - MIN_SPACING and x < rect.end.x + MIN_SPACING:
-			return false
-	return true
 
 func _is_x_range_clear(x: float, extent: float) -> bool:
 	const MIN_SPACING := 60.0
