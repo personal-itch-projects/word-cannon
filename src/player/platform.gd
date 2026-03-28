@@ -24,8 +24,10 @@ const RECOIL_RETURN := 8.0
 const SHOOT_SQUASH := 0.15
 const SQUASH_RETURN := 5.0
 
+const ARSENAL_SIZE := 10
+
 var screen_width: float
-var next_letter: String = ""
+var arsenal: Array[String] = []
 var font: Font
 var cannon_angle: float = 0.0
 
@@ -49,14 +51,14 @@ func _ready() -> void:
 	font = preload("res://assets/fonts/DM_Sans/DMSans-Regular.ttf")
 	var screen_height: float = get_viewport().get_visible_rect().size.y
 	position = Vector2(screen_width / 2.0, screen_height - 50)
-	_pick_next_letter()
+	_fill_arsenal()
 
 func reset() -> void:
 	position.x = screen_width / 2.0
 	wobble_intensity = 0.0
 	recoil_offset = 0.0
 	squash = 0.0
-	_pick_next_letter()
+	_fill_arsenal()
 	for child in get_children():
 		child.queue_free()
 
@@ -104,9 +106,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		_shoot()
 
 func _shoot() -> void:
+	if arsenal.is_empty():
+		return
 	recoil_offset = RECOIL_STRENGTH
 	squash = SHOOT_SQUASH
 
+	var shot_letter := arsenal.pop_front() as String
 	var mouse_pos := get_viewport().get_mouse_position()
 	var cannon_tip := Vector2(position.x, position.y - CANNON_HEIGHT)
 	var dir := (mouse_pos - cannon_tip).normalized()
@@ -117,13 +122,20 @@ func _shoot() -> void:
 	var ProjectileScript := preload("res://src/player/projectile.gd")
 	var proj := Node2D.new()
 	proj.set_script(ProjectileScript)
-	proj.setup(next_letter, cannon_tip, flock_manager, vel)
+	proj.setup(shot_letter, cannon_tip, flock_manager, vel)
 	get_parent().add_child(proj)
-	_pick_next_letter()
+	_append_arsenal_letter()
 
-func _pick_next_letter() -> void:
+func _fill_arsenal() -> void:
+	arsenal.clear()
 	var allowed := GameManager.get_allowed_letters()
-	next_letter = allowed[randi() % allowed.length()]
+	for i in ARSENAL_SIZE:
+		arsenal.append(WordDictionary.pick_weighted_letter(allowed))
+	queue_redraw()
+
+func _append_arsenal_letter() -> void:
+	var allowed := GameManager.get_allowed_letters()
+	arsenal.append(WordDictionary.pick_weighted_letter(allowed))
 	queue_redraw()
 
 func _draw() -> void:
@@ -139,10 +151,10 @@ func _draw() -> void:
 	_draw_cannon_body()
 
 	# Letter preview above muzzle
-	if next_letter != "":
+	if not arsenal.is_empty():
 		var preview_y := -CANNON_HEIGHT - MUZZLE_FLARE_H - 10.0 + recoil_offset
-		var text_size := font.get_string_size(next_letter, HORIZONTAL_ALIGNMENT_CENTER, -1, 18)
-		draw_string(font, Vector2(-text_size.x / 2.0, preview_y), next_letter, HORIZONTAL_ALIGNMENT_CENTER, -1, 18, color_cannon)
+		var text_size := font.get_string_size(arsenal[0], HORIZONTAL_ALIGNMENT_CENTER, -1, 18)
+		draw_string(font, Vector2(-text_size.x / 2.0, preview_y), arsenal[0], HORIZONTAL_ALIGNMENT_CENTER, -1, 18, color_cannon)
 
 	draw_set_transform(Vector2.ZERO)
 
