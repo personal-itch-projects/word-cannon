@@ -52,6 +52,10 @@ func _ready() -> void:
 	var screen_height: float = get_viewport().get_visible_rect().size.y
 	position = Vector2(screen_width / 2.0, screen_height - 50)
 	_fill_arsenal()
+	WordDictionary.language_changed.connect(_on_language_changed)
+
+func _on_language_changed(_lang: String) -> void:
+	_fill_arsenal()
 
 func reset() -> void:
 	position.x = screen_width / 2.0
