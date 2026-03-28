@@ -40,10 +40,6 @@ jobs:
             output_dir: build/web
             output_file: index.html
             artifact: web
-          - preset: "Android"
-            output_dir: build/android
-            output_file: WordCannon.apk
-            artifact: android
     steps:
       - uses: actions/checkout@v4
 
@@ -51,18 +47,6 @@ jobs:
         run: |
           mkdir -p ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
           mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable/* ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable/ 2>/dev/null || true
-
-      - name: Setup Android keystore
-        if: matrix.artifact == 'android'
-        run: |
-          keytool -genkey -v -keystore /tmp/debug.keystore -alias androiddebugkey \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass android -keypass android \
-            -dname "CN=Android Debug,O=Android,C=US"
-          echo 'export/android/android_sdk_path = "/usr/lib/android-sdk"' >> ~/.config/godot/editor_settings-4.tres
-          echo 'export/android/debug_keystore = "/tmp/debug.keystore"' >> ~/.config/godot/editor_settings-4.tres
-          echo 'export/android/debug_keystore_user = "androiddebugkey"' >> ~/.config/godot/editor_settings-4.tres
-          echo 'export/android/debug_keystore_pass = "android"' >> ~/.config/godot/editor_settings-4.tres
 
       - name: Create output directory
         run: mkdir -p ${{ matrix.output_dir }}
@@ -80,47 +64,10 @@ jobs:
           path: ${{ matrix.output_dir }}
           retention-days: 1
 
-  export-ios:
-    name: Export iOS
-    runs-on: macos-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Godot
-        run: |
-          brew install --cask godot
-          GODOT_BIN=$(find /Applications -name "Godot*" -type f -perm +111 2>/dev/null | head -1)
-          echo "GODOT_BIN=${GODOT_BIN}" >> $GITHUB_ENV
-
-      - name: Download export templates
-        run: |
-          TEMPLATES_URL="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
-          curl -L "$TEMPLATES_URL" -o /tmp/templates.tpz
-          mkdir -p ~/Library/Application\ Support/Godot/export_templates/${GODOT_VERSION}.stable
-          unzip -o /tmp/templates.tpz -d /tmp/templates
-          mv /tmp/templates/templates/* ~/Library/Application\ Support/Godot/export_templates/${GODOT_VERSION}.stable/
-
-      - name: Create output directory
-        run: mkdir -p build/ios
-
-      - name: Import project
-        run: $GODOT_BIN --headless --import 2>&1 || true
-
-      - name: Export iOS build
-        run: $GODOT_BIN --headless --export-release "iOS" build/ios/WordCannon.ipa
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios
-          path: build/ios
-          retention-days: 1
-
   upload:
     name: Upload to itch.io
     runs-on: ubuntu-latest
-    needs: [export, export-ios]
+    needs: [export]
     if: always() && needs.export.result == 'success'
     steps:
       - name: Determine version
@@ -161,16 +108,5 @@ jobs:
 
       - name: Push Web build
         run: butler push build/web ${{ env.ITCH_GAME }}:web --userversion ${{ steps.version.outputs.version }}
-        env:
-          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-
-      - name: Push Android build
-        run: butler push build/android ${{ env.ITCH_GAME }}:android --userversion ${{ steps.version.outputs.version }}
-        env:
-          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-
-      - name: Push iOS build
-        if: needs.export-ios.result == 'success'
-        run: butler push build/ios ${{ env.ITCH_GAME }}:ios --userversion ${{ steps.version.outputs.version }}
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
