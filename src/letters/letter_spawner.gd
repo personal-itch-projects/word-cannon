@@ -36,7 +36,7 @@ func _spawn_letter() -> void:
 	var letter_node := Node2D.new()
 	letter_node.set_script(FallingLetterScript)
 	var allowed: String = GameManager.get_allowed_letters()
-	var rand_letter := allowed[randi() % allowed.length()]
+	var rand_letter := WordDictionary.pick_weighted_letter(allowed)
 	letter_node.setup(rand_letter, Vector2(x_pos, -30))
 	flock_manager.create_flock_for_letter(letter_node)
 

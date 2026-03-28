@@ -4,6 +4,8 @@ const MIN_WORD_LENGTH := 3
 
 var anagram_table: Dictionary = {}   # sorted_key -> Array[{word, frequency}]
 var language: String = "en"           # "en" or "ru"
+var letter_weights: Dictionary = {}   # letter -> float weight
+var _weight_total: float = 0.0
 
 signal language_changed(lang: String)
 
@@ -37,6 +39,7 @@ func load_dictionary(lang: String) -> void:
 		if not anagram_table.has(key):
 			anagram_table[key] = []
 		anagram_table[key].append({"word": word, "frequency": freq})
+	_compute_letter_weights()
 	language_changed.emit(lang)
 
 func _is_alpha(text: String) -> bool:
@@ -78,3 +81,31 @@ func get_alphabet() -> String:
 		return "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	else:
 		return "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
+
+func pick_weighted_letter(allowed: String) -> String:
+	if allowed.is_empty():
+		return ""
+	var total := 0.0
+	for i in allowed.length():
+		total += letter_weights.get(allowed[i].to_lower(), 1.0)
+	var roll := randf() * total
+	var acc := 0.0
+	for i in allowed.length():
+		acc += letter_weights.get(allowed[i].to_lower(), 1.0)
+		if roll <= acc:
+			return allowed[i]
+	return allowed[allowed.length() - 1]
+
+func _compute_letter_weights() -> void:
+	letter_weights.clear()
+	_weight_total = 0.0
+	for key in anagram_table:
+		for entry in anagram_table[key]:
+			var word: String = entry["word"]
+			var freq: int = entry["frequency"]
+			var w: float = log(maxf(float(freq), 1.0)) + 1.0
+			for i in word.length():
+				var c: String = word[i]
+				letter_weights[c] = letter_weights.get(c, 0.0) + w
+	for c in letter_weights:
+		_weight_total += letter_weights[c]
