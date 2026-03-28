@@ -73,6 +73,8 @@ func _check_bottom() -> void:
 		var flock: Node2D = flocks[i]
 		if flock.get_bottom_y() >= screen_height:
 			GameManager.lose_life()
+			if GameManager.current_state != GameState.State.PLAYING:
+				return
 			_remove_flock(i)
 
 func _remove_flock(index: int) -> void:
