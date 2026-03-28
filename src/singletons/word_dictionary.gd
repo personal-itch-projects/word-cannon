@@ -6,6 +6,7 @@ var anagram_table: Dictionary = {}   # sorted_key -> Array[{word, frequency}]
 var language: String = "en"           # "en" or "ru"
 var letter_weights: Dictionary = {}   # letter -> float weight
 var _weight_total: float = 0.0
+var _alphabet: String = ""
 
 signal language_changed(lang: String)
 
@@ -77,10 +78,7 @@ func find_word(letters: Array[String]) -> Variant:
 	return best
 
 func get_alphabet() -> String:
-	if language == "en":
-		return "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	else:
-		return "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
+	return _alphabet
 
 func pick_weighted_letter(allowed: String) -> String:
 	if allowed.is_empty():
@@ -109,3 +107,7 @@ func _compute_letter_weights() -> void:
 				letter_weights[c] = letter_weights.get(c, 0.0) + w
 	for c in letter_weights:
 		_weight_total += letter_weights[c]
+	# Build alphabet from letters found in the dictionary
+	var chars: Array = letter_weights.keys()
+	chars.sort()
+	_alphabet = "".join(chars).to_upper()
