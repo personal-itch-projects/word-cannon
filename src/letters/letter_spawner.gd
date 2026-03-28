@@ -58,4 +58,5 @@ func _is_x_clear(x: float) -> bool:
 
 func _randomize_interval() -> void:
 	var cfg: Dictionary = GameManager.get_level_config()
-	next_interval = randf_range(cfg["spawn_min"], cfg["spawn_max"])
+	var min_no_overlap: float = 44.0 / cfg["fall_speed"]
+	next_interval = maxf(randf_range(cfg["spawn_min"], cfg["spawn_max"]), min_no_overlap)
