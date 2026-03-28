@@ -3,6 +3,7 @@ extends Node
 const MIN_WORD_LENGTH := 3
 
 var anagram_table: Dictionary = {}   # sorted_key -> Array[{word, frequency}]
+var word_table: Dictionary = {}      # word -> frequency (exact match)
 var language: String = "en"           # "en" or "ru"
 var letter_weights: Dictionary = {}   # letter -> float weight
 var _weight_total: float = 0.0
@@ -16,6 +17,7 @@ func _ready() -> void:
 func load_dictionary(lang: String) -> void:
 	language = lang
 	anagram_table.clear()
+	word_table.clear()
 	var path := "res://assets/data/%s.%s.csv" % [GameManager.datasource, lang]
 	var check_fn: Callable = _is_alpha if lang == "en" else _is_cyrillic
 	var file := FileAccess.open(path, FileAccess.READ)
@@ -40,6 +42,7 @@ func load_dictionary(lang: String) -> void:
 		if not anagram_table.has(key):
 			anagram_table[key] = []
 		anagram_table[key].append({"word": word, "frequency": freq})
+		word_table[word] = freq
 	_compute_letter_weights()
 	language_changed.emit(lang)
 
@@ -67,15 +70,9 @@ func _sort_letters(text: String) -> String:
 
 func find_word(letters: Array[String]) -> Variant:
 	var combined := "".join(letters).to_lower()
-	var key := _sort_letters(combined)
-	if not anagram_table.has(key):
+	if not word_table.has(combined):
 		return null
-	var matches: Array = anagram_table[key]
-	var best: Dictionary = matches[0]
-	for i in range(1, matches.size()):
-		if matches[i]["frequency"] > best["frequency"]:
-			best = matches[i]
-	return best
+	return {"word": combined, "frequency": word_table[combined]}
 
 func get_alphabet() -> String:
 	return _alphabet
