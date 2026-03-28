@@ -28,7 +28,7 @@ var datasource: String = "lemma"
 var previous_state: GameState.State = GameState.State.MAIN_MENU
 
 var _translations: Dictionary = {
-	"LETTER FALL": {"en": "LETTER FALL", "ru": "БУКВОПАД"},
+	"WORD CANNON": {"en": "WORD CANNON", "ru": "ТАРАТОР"},
 	"PLAY": {"en": "PLAY", "ru": "ИГРАТЬ"},
 	"SETTINGS": {"en": "SETTINGS", "ru": "НАСТРОЙКИ"},
 	"BACK": {"en": "BACK", "ru": "НАЗАД"},
