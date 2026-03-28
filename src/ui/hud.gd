@@ -41,6 +41,15 @@ func _draw() -> void:
 	# Level
 	draw_string(font_bold, Vector2(20, 70), GameManager.tr_text("LEVEL") + ": " + str(GameManager.current_level + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color("#1A1A1A"))
 
+	# Timer
+	var cfg: Dictionary = GameManager.get_level_config()
+	var remaining: float = maxf(cfg["duration"] - GameManager.level_timer, 0.0)
+	var minutes: int = int(remaining) / 60
+	var seconds: int = int(remaining) % 60
+	var timer_text := "%d:%02d" % [minutes, seconds]
+	var timer_size := font_bold.get_string_size(timer_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 28)
+	draw_string(font_bold, Vector2(screen_size.x / 2.0 - timer_size.x / 2.0, 40), timer_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 28, Color("#1A1A1A"))
+
 	# Lives
 	var lives_text := ""
 	for i in GameManager.MAX_LIVES:
