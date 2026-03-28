@@ -375,17 +375,9 @@ $RECYCLE.BIN/
 ### Project specific ###
 ########################
 
-/build/windows/YouTD2.zip
-/build/linux/YouTD2.zip
-/build/macos/YouTD2.zip
-/build/web/*
+/build/*/
 !/build/README.md
-!/build/web/full-size.html
-!/build/web/loading_screen.mp4
-!/build/web/loading_screen.png
 override.cfg
-/webrtc/*
-!/webrtc/README.md
 
 #######################
 ### Assets specific ###
