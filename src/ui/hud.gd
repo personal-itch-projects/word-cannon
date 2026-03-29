@@ -9,7 +9,7 @@ var font: Font
 var font_bold: Font
 var screen_size: Vector2
 var _arsenal_sprites: Array[Sprite2D] = []
-var _arsenal_labels: Array[Dictionary] = []  # {letter, position}
+var _arsenal_positions: Array[Vector2] = []
 
 @onready var platform: Node2D = get_node("/root/Main/GameLayer/Platform")
 
@@ -93,10 +93,13 @@ func _setup_arsenal_bubbles() -> void:
 	var y := screen_size.y - ARSENAL_BUBBLE_SIZE / 2.0 - 12.0
 
 	for i in ARSENAL_DISPLAY_COUNT:
+		var pos := Vector2(start_x + i * (ARSENAL_BUBBLE_SIZE + ARSENAL_GAP) + ARSENAL_BUBBLE_SIZE / 2.0, y)
+		_arsenal_positions.append(pos)
+
 		var sprite := Sprite2D.new()
 		sprite.texture = tex
 		sprite.scale = Vector2(ARSENAL_BUBBLE_SIZE, ARSENAL_BUBBLE_SIZE)
-		sprite.position = Vector2(start_x + i * (ARSENAL_BUBBLE_SIZE + ARSENAL_GAP) + ARSENAL_BUBBLE_SIZE / 2.0, y)
+		sprite.position = pos
 
 		var mat := ShaderMaterial.new()
 		mat.shader = shader
@@ -127,12 +130,9 @@ func _update_arsenal_bubbles() -> void:
 func _draw_arsenal_letters() -> void:
 	if not platform:
 		return
-	var total_w := ARSENAL_DISPLAY_COUNT * ARSENAL_BUBBLE_SIZE + (ARSENAL_DISPLAY_COUNT - 1) * ARSENAL_GAP
-	var start_x := screen_size.x / 2.0 - total_w / 2.0
-	var y := screen_size.y - ARSENAL_BUBBLE_SIZE / 2.0 - 12.0
 	var count := mini(platform.arsenal.size(), ARSENAL_DISPLAY_COUNT)
 	for i in count:
 		var letter: String = platform.arsenal[i]
-		var cx := start_x + i * (ARSENAL_BUBBLE_SIZE + ARSENAL_GAP) + ARSENAL_BUBBLE_SIZE / 2.0
+		var pos := _arsenal_positions[i]
 		var text_size := font.get_string_size(letter, HORIZONTAL_ALIGNMENT_CENTER, -1, ARSENAL_FONT_SIZE)
-		draw_string(font, Vector2(cx - text_size.x / 2.0, y + text_size.y / 4.0), letter, HORIZONTAL_ALIGNMENT_CENTER, -1, ARSENAL_FONT_SIZE, Color("#1A1A1A"))
+		draw_string(font, Vector2(pos.x - text_size.x / 2.0, pos.y + text_size.y / 4.0), letter, HORIZONTAL_ALIGNMENT_CENTER, -1, ARSENAL_FONT_SIZE, Color("#1A1A1A"))
