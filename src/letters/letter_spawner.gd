@@ -45,8 +45,8 @@ func _spawn_single_letter() -> void:
 	letter_node.set_script(FallingLetterScript)
 	var allowed: String = GameManager.get_allowed_letters()
 	var rand_letter := WordDictionary.pick_weighted_letter(allowed)
-	letter_node.setup(rand_letter, Vector2(x_pos, -30))
-	flock_manager.create_flock([letter_node] as Array[Node2D], letter_node.position)
+	letter_node.setup(rand_letter, Vector2.ZERO)
+	flock_manager.create_flock([letter_node] as Array[Node2D], Vector2(x_pos, -30))
 
 func _spawn_partial_word(gaps: int) -> void:
 	var kept_letters := WordDictionary.pick_partial_word(gaps)
