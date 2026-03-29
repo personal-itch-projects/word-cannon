@@ -2,12 +2,11 @@ extends Node
 
 signal state_changed(new_state: GameState.State)
 signal score_changed(new_score: int)
-signal lives_changed(new_lives: int)
 signal level_changed(new_level: int)
 signal goal_progress_changed
 signal stage_completed(stage: int)
 
-const MAX_LIVES := 3
+const BOTTOM_PENALTY := 10
 const LEVELS := [
 	# Stage 1 — Form N words (any)
 	{ "goal_type": "words", "goal_target": 10, "goal_word_length": 0, "letter_count": -1, "fall_speed": 20.0, "spawn_min": 1.2, "spawn_max": 2.5, "missing_letters": 0 },
@@ -31,7 +30,6 @@ const LEVELS := [
 
 var current_state: GameState.State = GameState.State.MAIN_MENU
 var score: int = 0
-var lives: int = 3
 var current_level: int = 0
 var level_timer: float = 0.0
 var bindings: Dictionary = {
@@ -157,20 +155,16 @@ func continue_after_stage() -> void:
 	change_state(GameState.State.PLAYING)
 	is_resuming = false
 
-func lose_life() -> void:
-	lives -= 1
-	lives_changed.emit(lives)
-	if lives <= 0:
-		change_state(GameState.State.DEFEAT)
+func penalize_bottom() -> void:
+	score = maxi(score - BOTTOM_PENALTY, 0)
+	score_changed.emit(score)
 
 func reset_game() -> void:
 	score = 0
-	lives = MAX_LIVES
 	current_level = 0
 	level_timer = 0.0
 	_reset_level_counters()
 	score_changed.emit(score)
-	lives_changed.emit(lives)
 	level_changed.emit(current_level)
 
 func start_game() -> void:
