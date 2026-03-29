@@ -78,10 +78,15 @@ func add_letter_to_flock(flock: Node2D, letter_char: String, from_pos: Vector2, 
 	flock.apply_dent(entry_local)
 	flock.apply_impact(entry_local, proj_velocity)
 	if flock.letters.size() >= WordDictionary.MIN_WORD_LENGTH and flock.possible_words.is_empty():
-		var flock_idx := flocks.find(flock)
-		if flock_idx >= 0:
-			flocks.remove_at(flock_idx)
-			flock.pop()
+		# Check if adding more letters could ever form a word
+		var letter_chars: Array[String] = []
+		for l in flock.letters:
+			letter_chars.append(l.letter)
+		if not WordDictionary.can_form_word_with_additions(letter_chars):
+			var flock_idx := flocks.find(flock)
+			if flock_idx >= 0:
+				flocks.remove_at(flock_idx)
+				flock.pop()
 
 func _check_bottom() -> void:
 	if GameManager.current_state != GameState.State.PLAYING:

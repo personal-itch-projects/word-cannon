@@ -121,6 +121,17 @@ func filter_possible_words(possible_words: Array, letters: Array[String]) -> Arr
 			results.append(entry)
 	return results
 
+func can_form_word_with_additions(letters: Array[String]) -> bool:
+	# Check if ANY dictionary word contains the current letters as a subset
+	# (i.e. the player could add more letters to eventually form a word)
+	var flock_counts := _count_letters("".join(letters).to_lower())
+	for word in word_table:
+		if word.length() < letters.size():
+			continue
+		if _is_multiset_subset(flock_counts, letter_count_table[word]):
+			return true
+	return false
+
 func get_alphabet() -> String:
 	return _alphabet
 
