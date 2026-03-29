@@ -32,6 +32,7 @@ var _letter_float_data: Array = []
 var _dent_pos: Vector2 = Vector2.ZERO
 var _dent_strength: float = 0.0
 var _popping: bool = false
+var is_intro_flock: bool = false
 
 var _bubble_sprite: Sprite2D
 var _bubble_material: ShaderMaterial
@@ -227,6 +228,11 @@ func _process(delta: float) -> void:
 			letters[i].position += vel * delta
 		_update_bubble_uniforms()
 		return
+
+	# Intro flocks stay stationary
+	if is_intro_flock:
+		velocity = Vector2.ZERO
+		push_velocity = Vector2.ZERO
 
 	# Apply push with drag
 	push_velocity = push_velocity.move_toward(Vector2.ZERO, PUSH_DRAG * push_velocity.length() * delta)

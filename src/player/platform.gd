@@ -31,6 +31,7 @@ var arsenal: Array[String] = []
 var font: Font
 var cannon_angle: float = 0.0
 var _loaded_projectile: Node2D
+var intro_mode: bool = false
 
 # Wobble state
 var wobble_intensity: float = 0.0
@@ -67,6 +68,7 @@ func reset() -> void:
 	wobble_intensity = 0.0
 	recoil_offset = 0.0
 	squash = 0.0
+	intro_mode = false
 	_loaded_projectile = null
 	_fill_arsenal()
 	for child in get_children():
@@ -75,6 +77,20 @@ func reset() -> void:
 
 func _process(delta: float) -> void:
 	if GameManager.current_state != GameState.State.PLAYING:
+		return
+
+	if intro_mode:
+		# Animate recoil/squash but no user movement or mouse aim
+		wobble_time += delta * WOBBLE_FREQ
+		wobble_intensity = move_toward(wobble_intensity, 0.0, WOBBLE_DAMPEN * delta)
+		recoil_offset = move_toward(recoil_offset, 0.0, RECOIL_RETURN * delta)
+		squash = move_toward(squash, 0.0, SQUASH_RETURN * delta)
+		if _loaded_projectile:
+			var wobble_rot := sin(wobble_time) * wobble_intensity * WOBBLE_MAX_ANGLE
+			var total_angle := cannon_angle + wobble_rot
+			var local_tip := Vector2(0, -CANNON_HEIGHT - MUZZLE_FLARE_H - 10.0 + recoil_offset)
+			_loaded_projectile.position = local_tip.rotated(total_angle)
+		queue_redraw()
 		return
 
 	# Movement
@@ -121,6 +137,8 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if GameManager.current_state != GameState.State.PLAYING:
 		return
+	if intro_mode:
+		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if flock_manager.is_click_on_flock(event.position):
 			return
@@ -150,6 +168,33 @@ func _shoot() -> void:
 
 	_append_arsenal_letter()
 	_create_loaded_projectile()
+
+func set_arsenal(letters: Array[String]) -> void:
+	arsenal = letters.duplicate()
+	_recreate_loaded_projectile()
+
+func auto_shoot(vel: Vector2) -> void:
+	if arsenal.is_empty() or not _loaded_projectile:
+		return
+	cannon_angle = clampf(atan2(vel.x, -vel.y), -PI / 3.0, PI / 3.0)
+	recoil_offset = RECOIL_STRENGTH
+	squash = SHOOT_SQUASH
+
+	arsenal.pop_front()
+	var global_pos := _loaded_projectile.global_position
+	remove_child(_loaded_projectile)
+	_loaded_projectile.position = global_pos
+	get_parent().add_child(_loaded_projectile)
+	_loaded_projectile.launch(flock_manager, vel)
+	_loaded_projectile = null
+
+	if not intro_mode:
+		_append_arsenal_letter()
+	_create_loaded_projectile()
+	# Position new projectile immediately at cannon tip
+	if _loaded_projectile:
+		var local_tip := Vector2(0, -CANNON_HEIGHT - MUZZLE_FLARE_H - 10.0 + recoil_offset)
+		_loaded_projectile.position = local_tip.rotated(cannon_angle)
 
 func _fill_arsenal() -> void:
 	arsenal.clear()

@@ -10,6 +10,7 @@ var font_bold: Font
 var screen_size: Vector2
 var _arsenal_sprites: Array[Sprite2D] = []
 var _arsenal_positions: Array[Vector2] = []
+var theme_intro_done: bool = false
 
 @onready var platform: Node2D = get_node("/root/Main/GameLayer/Platform")
 
@@ -38,6 +39,7 @@ func _on_goal_progress_changed() -> void:
 	queue_redraw()
 
 func _on_theme_changed(_name: String) -> void:
+	theme_intro_done = false
 	queue_redraw()
 
 func _draw() -> void:
@@ -61,7 +63,7 @@ func _draw() -> void:
 	draw_string(font, Vector2(screen_size.x / 2.0 - timer_size.x / 2.0, 62), timer_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color("#666666"))
 
 	# Theme display (centered, below timer)
-	if not GameManager.current_theme_name.is_empty():
+	if theme_intro_done and not GameManager.current_theme_name.is_empty():
 		var theme_label := GameManager.tr_text("Theme:")
 		var label_size := font.get_string_size(theme_label, HORIZONTAL_ALIGNMENT_CENTER, -1, 18)
 		draw_string(font, Vector2(screen_size.x / 2.0 - label_size.x / 2.0, 90), theme_label, HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color("#888888"))

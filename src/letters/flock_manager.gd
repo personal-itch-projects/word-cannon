@@ -6,6 +6,7 @@ const MAX_FREQ := 1500000.0
 
 var flocks: Array[Node2D] = []
 var screen_height: float
+var input_blocked: bool = false
 
 func _ready() -> void:
 	screen_height = get_viewport().get_visible_rect().size.y
@@ -15,6 +16,8 @@ func _process(_delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if GameManager.current_state != GameState.State.PLAYING:
+		return
+	if input_blocked:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		_try_click_flock(event.position)
@@ -87,7 +90,7 @@ func add_letter_to_flock(flock: Node2D, letter_char: String, from_pos: Vector2, 
 	flock.apply_push(proj_velocity)
 	flock.apply_dent(entry_local)
 	flock.apply_impact(entry_local, proj_velocity)
-	if flock.letters.size() >= WordDictionary.MIN_WORD_LENGTH and not flock.scorable:
+	if not flock.is_intro_flock and flock.letters.size() >= WordDictionary.MIN_WORD_LENGTH and not flock.scorable:
 		# Check if adding more letters could ever form a word
 		var letter_chars: Array[String] = []
 		for l in flock.letters:

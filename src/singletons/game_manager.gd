@@ -78,6 +78,8 @@ var _translations: Dictionary = {
 	"Words:": {"en": "Words:", "ru": "Слова:"},
 	"-letter words:": {"en": "-letter words:", "ru": "-букв. слова:"},
 	"Theme:": {"en": "Theme:", "ru": "Тема:"},
+	"CURRENT": {"en": "CURRENT", "ru": "ТЕКУЩАЯ"},
+	"THEME": {"en": "THEME", "ru": "ТЕМА"},
 }
 
 func tr_text(key: String) -> String:
