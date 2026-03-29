@@ -40,6 +40,7 @@ var bindings: Dictionary = {
 	"move_right": KEY_D,
 }
 var language: String = "en"
+var theme_intro_enabled: bool = false
 
 var previous_state: GameState.State = GameState.State.MAIN_MENU
 var is_resuming: bool = false
