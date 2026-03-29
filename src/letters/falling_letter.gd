@@ -1,11 +1,12 @@
 extends Node2D
 
-const LETTER_SIZE := 40.0
+const LETTER_SIZE := 20.0
+const COLLISION_RADIUS := 12.0
 
 var velocity: Vector2 = Vector2.ZERO
 var letter: String = ""
 var font: Font
-var font_size: int = 40
+var font_size: int = 20
 
 func _ready() -> void:
 	font = preload("res://assets/fonts/DM_Sans/DMSans-Regular.ttf")
@@ -13,7 +14,7 @@ func _ready() -> void:
 		var alphabet := WordDictionary.get_alphabet()
 		letter = alphabet[randi() % alphabet.length()]
 
-func setup(p_letter: String, p_position: Vector2, p_font_size: int = 40) -> void:
+func setup(p_letter: String, p_position: Vector2, p_font_size: int = 20) -> void:
 	letter = p_letter
 	position = p_position
 	font_size = p_font_size
