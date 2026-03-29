@@ -173,6 +173,11 @@ func set_arsenal(letters: Array[String]) -> void:
 	arsenal = letters.duplicate()
 	_recreate_loaded_projectile()
 
+func get_muzzle_position() -> Vector2:
+	if _loaded_projectile:
+		return _loaded_projectile.global_position
+	return global_position + Vector2(0, -CANNON_HEIGHT)
+
 func auto_shoot(vel: Vector2, target: Node2D = null) -> void:
 	if arsenal.is_empty() or not _loaded_projectile:
 		return

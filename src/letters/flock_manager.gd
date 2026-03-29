@@ -67,16 +67,22 @@ func check_projectile_collision(proj_pos: Vector2, proj_letter: String, only_flo
 			continue
 		if flock._popping:
 			continue
-		# Compute metaball field at projectile position - same formula as the shader
-		var local_pos: Vector2 = proj_pos - flock.global_position
-		var field := 0.0
-		var r: float = flock.METABALL_RADIUS
-		for letter in flock.letters:
-			var diff: Vector2 = local_pos - letter.position
-			var dist_sq := diff.length_squared()
-			field += (r * r) / (dist_sq + r * 0.5)
-		if field >= 1.0:
-			return flock
+		if only_flock:
+			# Target-locked: generous distance check (within bubble radius)
+			var dist := (proj_pos - flock.global_position).length()
+			if dist < flock._get_bubble_radius():
+				return flock
+		else:
+			# Normal gameplay: precise metaball field collision
+			var local_pos: Vector2 = proj_pos - flock.global_position
+			var field := 0.0
+			var r: float = flock.METABALL_RADIUS
+			for letter in flock.letters:
+				var diff: Vector2 = local_pos - letter.position
+				var dist_sq := diff.length_squared()
+				field += (r * r) / (dist_sq + r * 0.5)
+			if field >= 1.0:
+				return flock
 	return null
 
 func add_letter_to_flock(flock: Node2D, letter_char: String, from_pos: Vector2, proj_velocity: Vector2 = Vector2.ZERO) -> void:
