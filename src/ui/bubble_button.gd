@@ -3,26 +3,26 @@ extends Node2D
 
 const SEPARATION_RADIUS := 16.0
 const SEPARATION_STRENGTH := 100.0
-const SPRING_STRENGTH := 60.0
-const DRIFT_STRENGTH := 12.0
-const MAX_SPEED := 20.0
-const DAMPING := 0.96
+const SPRING_STRENGTH := 30.0
+const DRIFT_STRENGTH := 22.0
+const MAX_SPEED := 28.0
+const DAMPING := 0.97
 const COLLISION_DIAMETER := 14.0
 
 const BASE_BUBBLE_RADIUS := 14.0
 const RADIUS_PER_LETTER := 7.0
-const METABALL_RADIUS := 12.0
-const BUBBLE_PADDING := 14.0
+const METABALL_RADIUS := 14.0
+const BUBBLE_PADDING := 16.0
 
-const HOVER_SCALE := 1.08
-const HOVER_SPEED := 8.0
+const HOVER_SPREAD_SPEED := 3.0
 
 var letters: Array[Node2D] = []
 var _letter_float_data: Array = []
 var _home_positions: Array[Vector2] = []
 var _popping: bool = false
 var _hovered: bool = false
-var _current_scale: float = 1.0
+var _hover_amount: float = 0.0
+var _hover_center: Vector2 = Vector2.ZERO
 var _text: String = ""
 var _callback: Callable
 var _pop_on_click: bool = true
@@ -150,10 +150,12 @@ func _process(delta: float) -> void:
 	var half_h: float = METABALL_RADIUS + 10.0
 	_hovered = absf(local_mouse.x) < half_w and absf(local_mouse.y) < half_h
 
-	# Smooth hover scale
-	var target_scale := HOVER_SCALE if _hovered else 1.0
-	_current_scale = move_toward(_current_scale, target_scale, HOVER_SPEED * delta)
-	scale = Vector2(_current_scale, _current_scale)
+	# Hover green tint: spread from cursor
+	if _hovered:
+		_hover_center = local_mouse
+		_hover_amount = move_toward(_hover_amount, 1.0, HOVER_SPREAD_SPEED * delta)
+	else:
+		_hover_amount = move_toward(_hover_amount, 0.0, HOVER_SPREAD_SPEED * delta * 1.5)
 
 	var time := Time.get_ticks_msec() / 1000.0
 	var count := letters.size()
@@ -263,6 +265,8 @@ func _update_bubble_uniforms() -> void:
 	while positions.size() < 16:
 		positions.append(Vector2(-9999.0, -9999.0))
 	_bubble_material.set_shader_parameter("ball_positions", positions)
+	_bubble_material.set_shader_parameter("hover_center", _hover_center)
+	_bubble_material.set_shader_parameter("hover_amount", _hover_amount)
 	_bubble_material.set_shader_parameter("dent_pos", Vector2.ZERO)
 	_bubble_material.set_shader_parameter("dent_strength", 0.0)
 	_bubble_material.set_shader_parameter("dent_radius", 30.0)
