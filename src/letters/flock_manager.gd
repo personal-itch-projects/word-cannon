@@ -98,8 +98,8 @@ func add_letter_to_flock(flock: Node2D, letter_char: String, from_pos: Vector2, 
 	flock.apply_push(proj_velocity)
 	flock.apply_dent(entry_local)
 	flock.apply_impact(entry_local, proj_velocity)
-	if not flock.is_intro_flock and flock.letters.size() >= WordDictionary.MIN_WORD_LENGTH and not flock.scorable:
-		# Check if adding more letters could ever form a word
+	if not flock.is_intro_flock and flock.letters.size() >= WordDictionary.MIN_WORD_LENGTH:
+		# Pop if no dictionary word can contain all the flock's letters
 		var letter_chars: Array[String] = []
 		for l in flock.letters:
 			letter_chars.append(l.letter)
