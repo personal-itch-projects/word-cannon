@@ -1,12 +1,15 @@
 extends Control
 
-const CELL_SIZE := 30.0
-const CELL_GAP := 4.0
-const ARSENAL_FONT_SIZE := 18
+const ARSENAL_FONT_SIZE := 16
+const ARSENAL_DISPLAY_COUNT := 5
+const ARSENAL_BUBBLE_SIZE := 28.0
+const ARSENAL_GAP := 8.0
 
 var font: Font
 var font_bold: Font
 var screen_size: Vector2
+var _arsenal_sprites: Array[Sprite2D] = []
+var _arsenal_labels: Array[Dictionary] = []  # {letter, position}
 
 @onready var platform: Node2D = get_node("/root/Main/GameLayer/Platform")
 
@@ -14,6 +17,7 @@ func _ready() -> void:
 	font = preload("res://assets/fonts/Nunito/Nunito-Regular.ttf")
 	font_bold = preload("res://assets/fonts/Nunito/Nunito-Bold.ttf")
 	screen_size = get_viewport().get_visible_rect().size
+	_setup_arsenal_bubbles()
 	GameManager.score_changed.connect(_on_score_changed)
 	GameManager.level_changed.connect(_on_level_changed)
 	GameManager.goal_progress_changed.connect(_on_goal_progress_changed)
@@ -52,9 +56,9 @@ func _draw() -> void:
 	var timer_size := font.get_string_size(timer_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 18)
 	draw_string(font, Vector2(screen_size.x / 2.0 - timer_size.x / 2.0, 62), timer_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color("#666666"))
 
-	# Arsenal
-	if platform and not platform.arsenal.is_empty():
-		_draw_arsenal()
+	# Arsenal bubbles (update visibility and draw letters)
+	_update_arsenal_bubbles()
+	_draw_arsenal_letters()
 
 func _get_goal_text() -> String:
 	var cfg: Dictionary = GameManager.get_level_config()
@@ -67,21 +71,68 @@ func _get_goal_text() -> String:
 			return str(cfg["goal_word_length"]) + GameManager.tr_text("-letter words:") + " " + str(GameManager.level_words_of_length) + "/" + str(cfg["goal_target"])
 	return ""
 
-func _draw_arsenal() -> void:
-	var count: int = platform.arsenal.size()
-	var total_w: float = count * CELL_SIZE + (count - 1) * CELL_GAP
-	var start_x: float = screen_size.x / 2.0 - total_w / 2.0
-	var y: float = screen_size.y - CELL_SIZE - 8.0
+func _setup_arsenal_bubbles() -> void:
+	var shader := preload("res://src/shaders/metaball_bubble.gdshader")
+	var img := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	img.fill(Color.WHITE)
+	var tex := ImageTexture.create_from_image(img)
 
+	var gradient := Gradient.new()
+	gradient.offsets = PackedFloat32Array([0.0, 0.15, 0.5, 1.0])
+	gradient.colors = PackedColorArray([
+		Color(0.85, 0.93, 1.0, 0.55),
+		Color(0.78, 0.90, 1.0, 0.45),
+		Color(0.70, 0.85, 1.0, 0.30),
+		Color(0.65, 0.82, 1.0, 0.25),
+	])
+	var grad_tex := GradientTexture1D.new()
+	grad_tex.gradient = gradient
+
+	var total_w := ARSENAL_DISPLAY_COUNT * ARSENAL_BUBBLE_SIZE + (ARSENAL_DISPLAY_COUNT - 1) * ARSENAL_GAP
+	var start_x := screen_size.x / 2.0 - total_w / 2.0
+	var y := screen_size.y - ARSENAL_BUBBLE_SIZE / 2.0 - 12.0
+
+	for i in ARSENAL_DISPLAY_COUNT:
+		var sprite := Sprite2D.new()
+		sprite.texture = tex
+		sprite.scale = Vector2(ARSENAL_BUBBLE_SIZE, ARSENAL_BUBBLE_SIZE)
+		sprite.position = Vector2(start_x + i * (ARSENAL_BUBBLE_SIZE + ARSENAL_GAP) + ARSENAL_BUBBLE_SIZE / 2.0, y)
+
+		var mat := ShaderMaterial.new()
+		mat.shader = shader
+		mat.set_shader_parameter("ball_count", 1)
+		mat.set_shader_parameter("ball_positions", [Vector2.ZERO])
+		mat.set_shader_parameter("ball_radius", ARSENAL_BUBBLE_SIZE * 0.45)
+		mat.set_shader_parameter("rect_size", Vector2(ARSENAL_BUBBLE_SIZE, ARSENAL_BUBBLE_SIZE))
+		mat.set_shader_parameter("gradient_tex", grad_tex)
+		mat.set_shader_parameter("caustic_strength", 0.4)
+		mat.set_shader_parameter("caustic_scale", 0.05)
+		mat.set_shader_parameter("caustic_speed", 0.3)
+		sprite.material = mat
+
+		sprite.z_index = 1
+		sprite.z_as_relative = false
+		add_child(sprite)
+		_arsenal_sprites.append(sprite)
+
+func _update_arsenal_bubbles() -> void:
+	if not platform:
+		return
+	for i in ARSENAL_DISPLAY_COUNT:
+		if i < platform.arsenal.size():
+			_arsenal_sprites[i].visible = true
+		else:
+			_arsenal_sprites[i].visible = false
+
+func _draw_arsenal_letters() -> void:
+	if not platform:
+		return
+	var total_w := ARSENAL_DISPLAY_COUNT * ARSENAL_BUBBLE_SIZE + (ARSENAL_DISPLAY_COUNT - 1) * ARSENAL_GAP
+	var start_x := screen_size.x / 2.0 - total_w / 2.0
+	var y := screen_size.y - ARSENAL_BUBBLE_SIZE / 2.0 - 12.0
+	var count := mini(platform.arsenal.size(), ARSENAL_DISPLAY_COUNT)
 	for i in count:
-		var x: float = start_x + i * (CELL_SIZE + CELL_GAP)
-		var rect := Rect2(x, y, CELL_SIZE, CELL_SIZE)
-		var bg := Color.WHITE if i > 0 else Color("#FFF3CC")
-		var border := Color("#CC3333") if i == 0 else Color("#1A1A1A")
-		draw_rect(rect, bg)
-		draw_rect(rect, border, false, 2.0)
 		var letter: String = platform.arsenal[i]
+		var cx := start_x + i * (ARSENAL_BUBBLE_SIZE + ARSENAL_GAP) + ARSENAL_BUBBLE_SIZE / 2.0
 		var text_size := font.get_string_size(letter, HORIZONTAL_ALIGNMENT_CENTER, -1, ARSENAL_FONT_SIZE)
-		var tx: float = x + CELL_SIZE / 2.0 - text_size.x / 2.0
-		var ty: float = y + CELL_SIZE / 2.0 + text_size.y / 4.0
-		draw_string(font, Vector2(tx, ty), letter, HORIZONTAL_ALIGNMENT_CENTER, -1, ARSENAL_FONT_SIZE, Color("#1A1A1A"))
+		draw_string(font, Vector2(cx - text_size.x / 2.0, y + text_size.y / 4.0), letter, HORIZONTAL_ALIGNMENT_CENTER, -1, ARSENAL_FONT_SIZE, Color("#1A1A1A"))
