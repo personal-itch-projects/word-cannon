@@ -4,9 +4,9 @@ const SPEED := 800.0
 const SIZE := 15.0
 
 # Trail settings
-const TRAIL_LENGTH := 12
-const TRAIL_WIDTH := 10.0
-const TRAIL_UPDATE_INTERVAL := 0.016
+const TRAIL_SPAWN_INTERVAL := 0.03
+const TRAIL_PARTICLE_LIFETIME := 0.35
+const TRAIL_PARTICLE_SIZE := 10.0
 
 # Bubble visual
 const BUBBLE_SIZE := 24.0
@@ -17,11 +17,12 @@ var flock_manager: Node2D
 var font: Font
 var screen_width: float
 
-var _trail: Line2D
-var _trail_points: PackedVector2Array = PackedVector2Array()
 var _trail_timer: float = 0.0
+var _trail_container: Node2D
 var _bubble_sprite: Sprite2D
 var _bubble_material: ShaderMaterial
+var _trail_shader: Shader
+var _trail_grad_tex: GradientTexture1D
 
 func setup(p_letter: String, p_position: Vector2, p_flock_manager: Node2D, p_velocity: Vector2 = Vector2(0, -SPEED)) -> void:
 	letter = p_letter
@@ -36,28 +37,21 @@ func _ready() -> void:
 	_setup_bubble()
 
 func _setup_trail() -> void:
-	_trail = Line2D.new()
-	_trail.width = TRAIL_WIDTH
-	_trail.default_color = Color(0.7, 0.85, 1.0, 0.4)
-	_trail.joint_mode = Line2D.LINE_JOINT_ROUND
-	_trail.begin_cap_mode = Line2D.LINE_CAP_ROUND
-	_trail.end_cap_mode = Line2D.LINE_CAP_ROUND
-	_trail.top_level = true
+	_trail_container = Node2D.new()
+	_trail_container.top_level = true
+	add_child(_trail_container)
 
-	# Width curve: thick near projectile, tapers to zero
-	var width_curve := Curve.new()
-	width_curve.add_point(Vector2(0.0, 1.0))
-	width_curve.add_point(Vector2(0.3, 0.6))
-	width_curve.add_point(Vector2(1.0, 0.0))
-	_trail.width_curve = width_curve
-
-	# Color gradient: fades out
+	_trail_shader = preload("res://src/shaders/metaball_bubble.gdshader")
 	var gradient := Gradient.new()
-	gradient.set_color(0, Color(0.7, 0.88, 1.0, 0.35))
-	gradient.set_color(1, Color(0.7, 0.88, 1.0, 0.0))
-	_trail.gradient = gradient
-
-	add_child(_trail)
+	gradient.offsets = PackedFloat32Array([0.0, 0.15, 0.5, 1.0])
+	gradient.colors = PackedColorArray([
+		Color(0.85, 0.93, 1.0, 0.55),
+		Color(0.78, 0.90, 1.0, 0.45),
+		Color(0.70, 0.85, 1.0, 0.30),
+		Color(0.65, 0.82, 1.0, 0.25),
+	])
+	_trail_grad_tex = GradientTexture1D.new()
+	_trail_grad_tex.gradient = gradient
 
 func _setup_bubble() -> void:
 	var img := Image.create(2, 2, false, Image.FORMAT_RGBA8)
@@ -108,8 +102,23 @@ func _process(delta: float) -> void:
 		position.x = screen_width
 		velocity.x = -velocity.x
 
-	# Update trail
-	_update_trail(delta)
+	# Spawn trail particles
+	_trail_timer += delta
+	if _trail_timer >= TRAIL_SPAWN_INTERVAL:
+		_trail_timer = 0.0
+		_spawn_trail_particle()
+
+	# Fade and remove trail particles
+	for child in _trail_container.get_children():
+		var age: float = child.get_meta("age") + delta
+		child.set_meta("age", age)
+		var t := age / TRAIL_PARTICLE_LIFETIME
+		if t >= 1.0:
+			child.queue_free()
+		else:
+			var s := lerpf(1.0, 0.2, t)
+			child.scale = Vector2(TRAIL_PARTICLE_SIZE * s, TRAIL_PARTICLE_SIZE * s)
+			child.modulate.a = 1.0 - t
 
 	# Check collision with flocks (circle-based)
 	var hit_flock: Node2D = flock_manager.check_projectile_collision(global_position, letter)
@@ -122,16 +131,30 @@ func _process(delta: float) -> void:
 	if position.y < -50:
 		queue_free()
 
-func _update_trail(delta: float) -> void:
-	_trail_timer += delta
-	if _trail_timer >= TRAIL_UPDATE_INTERVAL:
-		_trail_timer = 0.0
-		_trail_points.insert(0, global_position)
-		if _trail_points.size() > TRAIL_LENGTH:
-			_trail_points.resize(TRAIL_LENGTH)
-		_trail.clear_points()
-		for p in _trail_points:
-			_trail.add_point(p)
+func _spawn_trail_particle() -> void:
+	var img := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	img.fill(Color.WHITE)
+	var tex := ImageTexture.create_from_image(img)
+
+	var sprite := Sprite2D.new()
+	sprite.texture = tex
+	sprite.scale = Vector2(TRAIL_PARTICLE_SIZE, TRAIL_PARTICLE_SIZE)
+	sprite.global_position = global_position
+
+	var mat := ShaderMaterial.new()
+	mat.shader = _trail_shader
+	mat.set_shader_parameter("ball_count", 1)
+	mat.set_shader_parameter("ball_positions", [Vector2.ZERO])
+	mat.set_shader_parameter("ball_radius", TRAIL_PARTICLE_SIZE * 0.45)
+	mat.set_shader_parameter("rect_size", Vector2(TRAIL_PARTICLE_SIZE, TRAIL_PARTICLE_SIZE))
+	mat.set_shader_parameter("gradient_tex", _trail_grad_tex)
+	mat.set_shader_parameter("caustic_strength", 0.3)
+	mat.set_shader_parameter("caustic_scale", 0.08)
+	mat.set_shader_parameter("caustic_speed", 0.6)
+	sprite.material = mat
+
+	sprite.set_meta("age", 0.0)
+	_trail_container.add_child(sprite)
 
 func _draw() -> void:
 	if font == null:
