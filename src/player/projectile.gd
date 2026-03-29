@@ -94,6 +94,7 @@ func _setup_bubble() -> void:
 	_bubble_sprite.material = _bubble_material
 
 	_bubble_sprite.z_index = 1
+	_bubble_sprite.z_as_relative = false
 	add_child(_bubble_sprite)
 
 func _process(delta: float) -> void:

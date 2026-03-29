@@ -75,6 +75,7 @@ func _setup_bubble_visual() -> void:
 	_bubble_sprite.material = _bubble_material
 
 	_bubble_sprite.z_index = 1
+	_bubble_sprite.z_as_relative = false
 	add_child(_bubble_sprite)
 
 func add_letter(letter_node: Node2D, entry_velocity: Vector2 = Vector2.ZERO) -> void:
@@ -83,6 +84,7 @@ func add_letter(letter_node: Node2D, entry_velocity: Vector2 = Vector2.ZERO) -> 
 	letter_node.set_process(false)
 	_init_letter_float(letter_node, entry_velocity)
 	_update_possible_words()
+	move_child(_bubble_sprite, -1)
 
 func _init_letter_float(letter_node: Node2D, entry_velocity: Vector2 = Vector2.ZERO) -> void:
 	var vel: Vector2

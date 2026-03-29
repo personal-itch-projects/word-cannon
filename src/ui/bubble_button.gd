@@ -79,6 +79,7 @@ func _setup_bubble_visual() -> void:
 	_bubble_sprite.material = _bubble_material
 
 	_bubble_sprite.z_index = 1
+	_bubble_sprite.z_as_relative = false
 	add_child(_bubble_sprite)
 
 func _build_letters(text: String) -> void:
@@ -114,6 +115,7 @@ func _build_letters(text: String) -> void:
 			"drift_angle": randf() * TAU,
 			"drift_speed": randf_range(1.5, 3.0),
 		})
+	move_child(_bubble_sprite, -1)
 
 func rebuild(text: String) -> void:
 	_text = text
