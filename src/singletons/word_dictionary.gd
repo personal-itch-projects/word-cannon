@@ -37,6 +37,9 @@ var _best_word: String = ""
 var _best_freq: int = 0
 var _weight_sum: float = 0.0
 
+# DFS state for count_reachable_words
+var _count_result: int = 0
+
 signal language_changed(lang: String)
 
 func _ready() -> void:
@@ -221,6 +224,81 @@ func pick_weighted_letter(allowed: String) -> String:
 		acc += letter_weights.get(allowed[i].to_lower(), 1.0)
 		if roll <= acc:
 			return allowed[i]
+	return allowed[allowed.length() - 1]
+
+func count_reachable_words(budget: Dictionary) -> int:
+	_count_result = 0
+	_trie_count_dfs(_trie_root, budget, 0)
+	return _count_result
+
+func _trie_count_dfs(node: Dictionary, budget: Dictionary, depth: int) -> void:
+	if not node["w"].is_empty() and depth >= MIN_WORD_LENGTH:
+		_count_result += 1
+	for ch in node["c"]:
+		if budget.get(ch, 0) > 0:
+			budget[ch] -= 1
+			_trie_count_dfs(node["c"][ch], budget, depth + 1)
+			budget[ch] += 1
+
+# Slot-aware letter selection: scores each candidate letter by how many
+# flocks it helps, weighted by slot urgency, then samples proportionally.
+# Falls back to frequency-based weights when no flocks exist or scores are low.
+const SLOT_SCORE_THRESHOLD := 5.0
+
+func pick_slot_aware_letter(flock_letter_arrays: Array, allowed: String) -> String:
+	if allowed.is_empty():
+		return ""
+
+	var scores: Dictionary = {}
+	var total_slot_score := 0.0
+
+	for flock_letters in flock_letter_arrays:
+		# Build budget from flock's current letters
+		var budget: Dictionary = {}
+		for l in flock_letters:
+			var ch: String = l.to_lower()
+			budget[ch] = budget.get(ch, 0) + 1
+
+		var baseline := count_reachable_words(budget)
+		var empty_spaces := maxi(MIN_WORD_LENGTH - flock_letters.size(), 1)
+		var urgency := 1.0 / float(empty_spaces)
+
+		# Score each candidate letter by marginal value for this flock
+		for i in allowed.length():
+			var ch := allowed[i].to_lower()
+			budget[ch] = budget.get(ch, 0) + 1
+			var reachable_with := count_reachable_words(budget)
+			budget[ch] -= 1
+			if budget[ch] == 0:
+				budget.erase(ch)
+
+			var marginal := reachable_with - baseline
+			if marginal > 0:
+				var contribution := float(marginal) * urgency
+				scores[ch] = scores.get(ch, 0.0) + contribution
+				total_slot_score += contribution
+
+	# Blend slot scores with frequency weights (smooth transition)
+	var alpha := minf(1.0, total_slot_score / SLOT_SCORE_THRESHOLD) if total_slot_score > 0.0 else 0.0
+
+	var total := 0.0
+	for i in allowed.length():
+		var ch := allowed[i].to_lower()
+		var w: float = alpha * scores.get(ch, 0.0) + (1.0 - alpha) * letter_weights.get(ch, 1.0)
+		total += w
+
+	if total <= 0.0:
+		return pick_weighted_letter(allowed)
+
+	var roll := randf() * total
+	var acc := 0.0
+	for i in allowed.length():
+		var ch := allowed[i].to_lower()
+		var w: float = alpha * scores.get(ch, 0.0) + (1.0 - alpha) * letter_weights.get(ch, 1.0)
+		acc += w
+		if roll <= acc:
+			return allowed[i]
+
 	return allowed[allowed.length() - 1]
 
 func _compute_letter_weights() -> void:

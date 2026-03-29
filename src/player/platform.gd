@@ -154,14 +154,33 @@ func _shoot() -> void:
 func _fill_arsenal() -> void:
 	arsenal.clear()
 	var allowed := GameManager.get_allowed_letters()
+	var flock_data := _get_flock_letter_arrays()
 	for i in ARSENAL_SIZE:
-		arsenal.append(WordDictionary.pick_weighted_letter(allowed))
+		if flock_data.is_empty():
+			arsenal.append(WordDictionary.pick_weighted_letter(allowed))
+		else:
+			arsenal.append(WordDictionary.pick_slot_aware_letter(flock_data, allowed))
 	queue_redraw()
 
 func _append_arsenal_letter() -> void:
 	var allowed := GameManager.get_allowed_letters()
-	arsenal.append(WordDictionary.pick_weighted_letter(allowed))
+	var flock_data := _get_flock_letter_arrays()
+	if flock_data.is_empty():
+		arsenal.append(WordDictionary.pick_weighted_letter(allowed))
+	else:
+		arsenal.append(WordDictionary.pick_slot_aware_letter(flock_data, allowed))
 	queue_redraw()
+
+func _get_flock_letter_arrays() -> Array:
+	var result: Array = []
+	for flock in flock_manager.flocks:
+		if flock._popping:
+			continue
+		var flock_letters: Array[String] = []
+		for l in flock.letters:
+			flock_letters.append(l.letter)
+		result.append(flock_letters)
+	return result
 
 func _draw() -> void:
 	# Jiggle rotation from movement wobble
