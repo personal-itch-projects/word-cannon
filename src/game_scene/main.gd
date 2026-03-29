@@ -186,7 +186,7 @@ func _run_theme_intro() -> void:
 		var launch_pos := platform.global_position + Vector2(0, -platform.CANNON_HEIGHT)
 		var target_pos: Vector2 = shot.flock.global_position
 		var vel := _calc_bounce_velocity(launch_pos, target_pos, bounds)
-		platform.auto_shoot(vel)
+		platform.auto_shoot(vel, shot.flock)
 		await get_tree().create_timer(0.35).timeout
 		if not _intro_running:
 			return

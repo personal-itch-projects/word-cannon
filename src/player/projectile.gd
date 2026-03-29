@@ -21,6 +21,7 @@ var flock_manager: Node2D
 var font: Font
 var screen_width: float
 var launched := false
+var target_flock: Node2D = null
 
 var _trail_timer: float = 0.0
 var _trail_container: Node2D
@@ -124,8 +125,8 @@ func _process(delta: float) -> void:
 		for _i in TRAIL_PARTICLES_PER_SPAWN:
 			_spawn_trail_particle()
 
-	# Check collision with flocks (circle-based)
-	var hit_flock: Node2D = flock_manager.check_projectile_collision(global_position, letter)
+	# Check collision with flocks
+	var hit_flock: Node2D = flock_manager.check_projectile_collision(global_position, letter, target_flock)
 	if hit_flock:
 		flock_manager.add_letter_to_flock(hit_flock, letter, global_position, velocity)
 		queue_free()

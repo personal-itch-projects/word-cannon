@@ -61,8 +61,10 @@ func create_flock(letter_nodes: Array[Node2D], spawn_pos: Vector2) -> Node2D:
 	flocks.append(flock)
 	return flock
 
-func check_projectile_collision(proj_pos: Vector2, proj_letter: String) -> Node2D:
+func check_projectile_collision(proj_pos: Vector2, proj_letter: String, only_flock: Node2D = null) -> Node2D:
 	for flock in flocks:
+		if only_flock and flock != only_flock:
+			continue
 		if flock._popping:
 			continue
 		# Compute metaball field at projectile position - same formula as the shader

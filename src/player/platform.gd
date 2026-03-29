@@ -173,7 +173,7 @@ func set_arsenal(letters: Array[String]) -> void:
 	arsenal = letters.duplicate()
 	_recreate_loaded_projectile()
 
-func auto_shoot(vel: Vector2) -> void:
+func auto_shoot(vel: Vector2, target: Node2D = null) -> void:
 	if arsenal.is_empty() or not _loaded_projectile:
 		return
 	cannon_angle = clampf(atan2(vel.x, -vel.y), -PI / 3.0, PI / 3.0)
@@ -185,6 +185,8 @@ func auto_shoot(vel: Vector2) -> void:
 	remove_child(_loaded_projectile)
 	_loaded_projectile.position = global_pos
 	get_parent().add_child(_loaded_projectile)
+	if target:
+		_loaded_projectile.target_flock = target
 	_loaded_projectile.launch(flock_manager, vel)
 	_loaded_projectile = null
 
