@@ -47,7 +47,7 @@ func _setup_borders() -> void:
 func _update_borders() -> void:
 	var bounds := GameManager.get_play_bounds()
 	var screen_h: float = get_viewport().get_visible_rect().size.y
-	var border_w := 30.0
+	var border_w := 16.0
 	_border_left.scale = Vector2(border_w, screen_h)
 	_border_left.position = Vector2(bounds.x, screen_h / 2.0)
 	_border_right.scale = Vector2(border_w, screen_h)
