@@ -79,7 +79,6 @@ func _setup_bubble_visual() -> void:
 	_bubble_sprite.material = _bubble_material
 
 	add_child(_bubble_sprite)
-	move_child(_bubble_sprite, 0)
 
 func _build_letters(text: String) -> void:
 	# Remove existing letters

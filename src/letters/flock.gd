@@ -75,7 +75,6 @@ func _setup_bubble_visual() -> void:
 	_bubble_sprite.material = _bubble_material
 
 	add_child(_bubble_sprite)
-	move_child(_bubble_sprite, 0)
 
 func add_letter(letter_node: Node2D, entry_velocity: Vector2 = Vector2.ZERO) -> void:
 	letters.append(letter_node)

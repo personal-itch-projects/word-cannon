@@ -93,9 +93,7 @@ func _setup_bubble() -> void:
 
 	_bubble_sprite.material = _bubble_material
 
-	# Insert behind the letter text (drawn via _draw)
 	add_child(_bubble_sprite)
-	move_child(_bubble_sprite, 0)
 
 func _process(delta: float) -> void:
 	position += velocity * delta
