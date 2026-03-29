@@ -157,6 +157,67 @@ func pop() -> void:
 		queue_free()
 	)
 
+func pop_word(word: String) -> void:
+	if _popping:
+		return
+	_popping = true
+	velocity = Vector2.ZERO
+	push_velocity = Vector2.ZERO
+
+	var upper_word := word.to_upper()
+
+	# Match letter nodes to word characters (greedy multiset match)
+	var matched_indices: Array[int] = []
+	var used: Array[bool] = []
+	used.resize(letters.size())
+	used.fill(false)
+	for ci in upper_word.length():
+		var ch := upper_word[ci]
+		for li in letters.size():
+			if not used[li] and letters[li].letter.to_upper() == ch:
+				matched_indices.append(li)
+				used[li] = true
+				break
+
+	# Compute word-layout target positions centered at origin
+	var char_width := 28.0
+	var total_width := upper_word.length() * char_width
+	var start_x := -total_width / 2.0 + char_width / 2.0
+	var target_positions: Array[Vector2] = []
+	for ci in upper_word.length():
+		target_positions.append(Vector2(start_x + ci * char_width, 0.0))
+
+	# Tween matched letters to word positions
+	var tween := create_tween()
+	tween.set_parallel(true)
+
+	# Fade bubble out quickly
+	tween.tween_property(_bubble_sprite, "modulate:a", 0.0, 0.25).set_ease(Tween.EASE_OUT)
+
+	# Move matched letters to word positions
+	for mi in matched_indices.size():
+		var li: int = matched_indices[mi]
+		_letter_float_data[li]["velocity"] = Vector2.ZERO
+		tween.tween_property(letters[li], "position", target_positions[mi], 0.3)\
+			.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+
+	# Scatter unmatched letters outward + fade them
+	for li in letters.size():
+		if not used[li]:
+			var dir: Vector2 = letters[li].position.normalized()
+			if dir.length_squared() < 0.01:
+				dir = Vector2(randf() - 0.5, randf() - 0.5).normalized()
+			_letter_float_data[li]["velocity"] = dir * randf_range(150.0, 300.0)
+			tween.tween_property(letters[li], "modulate:a", 0.0, 0.3)
+
+	# After letters arrive: hold word visible for ~1s, then fade over 1s
+	tween.chain().tween_interval(1.0)
+	tween.chain().tween_property(self, "modulate:a", 0.0, 1.0).set_ease(Tween.EASE_IN)
+	tween.chain().tween_callback(func():
+		remove_all()
+		queue_free()
+	)
+
 func _process(delta: float) -> void:
 	if _popping:
 		# During pop: just scatter letters outward, no boid forces

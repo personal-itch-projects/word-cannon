@@ -27,7 +27,7 @@ func _try_click_flock(click_pos: Vector2) -> void:
 			var score := _calculate_score(best["word"].length(), best["frequency"])
 			GameManager.add_score(score)
 			flocks.remove_at(i)
-			flock.pop()
+			flock.pop_word(best["word"])
 			get_viewport().set_input_as_handled()
 			return
 
@@ -80,7 +80,8 @@ func add_letter_to_flock(flock: Node2D, letter_char: String, from_pos: Vector2, 
 	if flock.letters.size() >= WordDictionary.MIN_WORD_LENGTH and flock.possible_words.is_empty():
 		var flock_idx := flocks.find(flock)
 		if flock_idx >= 0:
-			_remove_flock(flock_idx)
+			flocks.remove_at(flock_idx)
+			flock.pop()
 
 func _check_bottom() -> void:
 	if GameManager.current_state != GameState.State.PLAYING:
