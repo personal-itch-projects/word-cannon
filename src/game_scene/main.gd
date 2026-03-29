@@ -23,7 +23,7 @@ func _ready() -> void:
 	_setup_borders()
 	var ThemeIntro := preload("res://src/game_scene/theme_intro.gd")
 	_theme_intro = ThemeIntro.new()
-	_theme_intro.setup(get_tree(), game_layer, flock_manager, platform, hud, letter_spawner)
+	_theme_intro.setup(get_tree(), flock_manager, platform, hud, letter_spawner)
 	GameManager.state_changed.connect(_on_state_changed)
 	_on_state_changed(GameManager.current_state)
 

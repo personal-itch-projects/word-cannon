@@ -20,11 +20,9 @@ var _flock_manager: Node2D
 var _platform: Node2D
 var _hud: Control
 var _letter_spawner: Node2D
-var _game_layer: Node2D
 
-func setup(tree: SceneTree, game_layer: Node2D, flock_manager: Node2D, platform: Node2D, hud: Control, letter_spawner: Node2D) -> void:
+func setup(tree: SceneTree, flock_manager: Node2D, platform: Node2D, hud: Control, letter_spawner: Node2D) -> void:
 	_tree = tree
-	_game_layer = game_layer
 	_flock_manager = flock_manager
 	_platform = platform
 	_hud = hud
@@ -33,8 +31,6 @@ func setup(tree: SceneTree, game_layer: Node2D, flock_manager: Node2D, platform:
 func cancel() -> void:
 	_running = false
 	_flocks.clear()
-	_platform.intro_mode = false
-	_flock_manager.input_blocked = false
 
 func run() -> void:
 	if not GameManager.theme_intro_enabled:

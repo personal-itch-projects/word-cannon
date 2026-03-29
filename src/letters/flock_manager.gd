@@ -62,27 +62,26 @@ func create_flock(letter_nodes: Array[Node2D], spawn_pos: Vector2) -> Node2D:
 	return flock
 
 func check_projectile_collision(proj_pos: Vector2, proj_letter: String, only_flock: Node2D = null) -> Node2D:
+	if only_flock:
+		# Target-locked: generous distance check (within bubble radius)
+		if not only_flock._popping:
+			var dist := (proj_pos - only_flock.global_position).length()
+			if dist < only_flock._get_bubble_radius():
+				return only_flock
+		return null
 	for flock in flocks:
-		if only_flock and flock != only_flock:
-			continue
 		if flock._popping:
 			continue
-		if only_flock:
-			# Target-locked: generous distance check (within bubble radius)
-			var dist := (proj_pos - flock.global_position).length()
-			if dist < flock._get_bubble_radius():
-				return flock
-		else:
-			# Normal gameplay: precise metaball field collision
-			var local_pos: Vector2 = proj_pos - flock.global_position
-			var field := 0.0
-			var r: float = flock.METABALL_RADIUS
-			for letter in flock.letters:
-				var diff: Vector2 = local_pos - letter.position
-				var dist_sq := diff.length_squared()
-				field += (r * r) / (dist_sq + r * 0.5)
-			if field >= 1.0:
-				return flock
+		# Normal gameplay: precise metaball field collision
+		var local_pos: Vector2 = proj_pos - flock.global_position
+		var field := 0.0
+		var r: float = flock.METABALL_RADIUS
+		for letter in flock.letters:
+			var diff: Vector2 = local_pos - letter.position
+			var dist_sq := diff.length_squared()
+			field += (r * r) / (dist_sq + r * 0.5)
+		if field >= 1.0:
+			return flock
 	return null
 
 func add_letter_to_flock(flock: Node2D, letter_char: String, from_pos: Vector2, proj_velocity: Vector2 = Vector2.ZERO) -> void:
