@@ -1,15 +1,15 @@
 extends Node2D
 
-const SPEED := 500.0
-const SIZE := 30.0
+const SPEED := 800.0
+const SIZE := 15.0
 
 # Trail settings
 const TRAIL_LENGTH := 12
-const TRAIL_WIDTH := 14.0
+const TRAIL_WIDTH := 10.0
 const TRAIL_UPDATE_INTERVAL := 0.016
 
 # Bubble visual
-const BUBBLE_SIZE := 40.0
+const BUBBLE_SIZE := 24.0
 
 var letter: String = ""
 var velocity: Vector2 = Vector2(0, -SPEED)
@@ -129,6 +129,6 @@ func _update_trail(delta: float) -> void:
 func _draw() -> void:
 	if font == null:
 		return
-	var text_size := font.get_string_size(letter, HORIZONTAL_ALIGNMENT_CENTER, -1, 32)
+	var text_size := font.get_string_size(letter, HORIZONTAL_ALIGNMENT_CENTER, -1, 18)
 	var offset := -text_size / 2.0
-	draw_string(font, Vector2(offset.x, -offset.y), letter, HORIZONTAL_ALIGNMENT_CENTER, -1, 32, Color("#1A1A1A"))
+	draw_string(font, Vector2(offset.x, -offset.y), letter, HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color("#1A1A1A"))
