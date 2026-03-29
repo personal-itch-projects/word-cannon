@@ -146,7 +146,7 @@ func _run_theme_intro() -> void:
 	flock_manager.input_blocked = true
 
 	# Position rows
-	var row1_y := screen_size.y * 0.30
+	var row1_y := screen_size.y * 0.38
 	var row2_y := screen_size.y * 0.45
 	var row1_positions := _calc_row_positions(row1_words, row1_y, bounds)
 	var row2_positions := _calc_row_positions(row2_words, row2_y, bounds)
@@ -187,7 +187,7 @@ func _run_theme_intro() -> void:
 		var target_pos: Vector2 = shot.flock.global_position
 		var vel := _calc_bounce_velocity(launch_pos, target_pos, bounds)
 		platform.auto_shoot(vel, shot.flock)
-		await get_tree().create_timer(0.35).timeout
+		await get_tree().create_timer(0.2).timeout
 		if not _intro_running:
 			return
 
