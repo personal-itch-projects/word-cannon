@@ -3,10 +3,9 @@ extends Node2D
 const SPEED := 800.0
 const SIZE := 15.0
 
-# Trail settings
-const TRAIL_SPAWN_INTERVAL := 0.03
+# Trail metaball settings
+const TRAIL_PARTICLE_AMOUNT := 25
 const TRAIL_PARTICLE_LIFETIME := 0.35
-const TRAIL_PARTICLE_SIZE := 10.0
 
 # Bubble visual
 const BUBBLE_SIZE := 24.0
@@ -17,12 +16,12 @@ var flock_manager: Node2D
 var font: Font
 var screen_width: float
 
-var _trail_timer: float = 0.0
-var _trail_container: Node2D
 var _bubble_sprite: Sprite2D
 var _bubble_material: ShaderMaterial
-var _trail_shader: Shader
-var _trail_grad_tex: GradientTexture1D
+var _trail_viewport: SubViewport
+var _trail_display: Sprite2D
+var _trail_particles: CPUParticles2D
+var _trail_core: Sprite2D
 
 func setup(p_letter: String, p_position: Vector2, p_flock_manager: Node2D, p_velocity: Vector2 = Vector2(0, -SPEED)) -> void:
 	letter = p_letter
@@ -37,21 +36,85 @@ func _ready() -> void:
 	_setup_bubble()
 
 func _setup_trail() -> void:
-	_trail_container = Node2D.new()
-	_trail_container.top_level = true
-	add_child(_trail_container)
+	var screen_size := get_viewport().get_visible_rect().size
 
-	_trail_shader = preload("res://src/shaders/metaball_bubble.gdshader")
+	# Radial gradient texture: bright center fading to black edges
+	var radial_img := Image.create(64, 64, false, Image.FORMAT_R8)
+	for y in 64:
+		for x in 64:
+			var dx := (x - 31.5) / 31.5
+			var dy := (y - 31.5) / 31.5
+			var dist := sqrt(dx * dx + dy * dy)
+			var val := clampf(1.0 - dist, 0.0, 1.0)
+			radial_img.set_pixel(x, y, Color(val, val, val, 1.0))
+	var radial_tex := ImageTexture.create_from_image(radial_img)
+
+	# SubViewport: black background accumulates brightness with additive blend
+	_trail_viewport = SubViewport.new()
+	_trail_viewport.transparent_bg = false
+	_trail_viewport.size = Vector2i(int(screen_size.x), int(screen_size.y))
+	_trail_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(_trail_viewport)
+
+	# Additive blend material for all viewport contents
+	var add_mat := CanvasItemMaterial.new()
+	add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+
+	# Core blob: follows projectile, merges with trail particles
+	_trail_core = Sprite2D.new()
+	_trail_core.texture = radial_tex
+	_trail_core.material = add_mat
+	_trail_core.scale = Vector2.ONE * 0.5
+	_trail_viewport.add_child(_trail_core)
+
+	# CPUParticles2D: emits trail particles with radial gradient
+	_trail_particles = CPUParticles2D.new()
+	_trail_particles.texture = radial_tex
+	_trail_particles.material = add_mat
+	_trail_particles.emitting = true
+	_trail_particles.amount = TRAIL_PARTICLE_AMOUNT
+	_trail_particles.lifetime = TRAIL_PARTICLE_LIFETIME
+	_trail_particles.explosiveness = 0.0
+	_trail_particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_POINT
+	_trail_particles.direction = Vector2.ZERO
+	_trail_particles.spread = 180.0
+	_trail_particles.initial_velocity_min = 5.0
+	_trail_particles.initial_velocity_max = 20.0
+	_trail_particles.gravity = Vector2.ZERO
+	_trail_particles.scale_amount_min = 0.2
+	_trail_particles.scale_amount_max = 0.35
+	# Fade alpha over lifetime to shrink metaballs (per article technique)
+	var ramp := Gradient.new()
+	ramp.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0)])
+	_trail_particles.color_ramp = ramp
+	_trail_viewport.add_child(_trail_particles)
+
+	# Display: renders viewport texture with metaball gradient shader
+	_trail_display = Sprite2D.new()
+	_trail_display.texture = _trail_viewport.get_texture()
+	_trail_display.centered = false
+	_trail_display.top_level = true
+	_trail_display.position = Vector2.ZERO
+	_trail_display.z_index = -1
+
+	var shader := preload("res://src/shaders/metaball_trail.gdshader")
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	# Color gradient: maps brightness to bubble colors (transparent below threshold)
 	var gradient := Gradient.new()
-	gradient.offsets = PackedFloat32Array([0.0, 0.15, 0.5, 1.0])
+	gradient.offsets = PackedFloat32Array([0.0, 0.05, 0.2, 0.5, 1.0])
 	gradient.colors = PackedColorArray([
+		Color(0.0, 0.0, 0.0, 0.0),
 		Color(0.85, 0.93, 1.0, 0.55),
 		Color(0.78, 0.90, 1.0, 0.45),
 		Color(0.70, 0.85, 1.0, 0.30),
 		Color(0.65, 0.82, 1.0, 0.25),
 	])
-	_trail_grad_tex = GradientTexture1D.new()
-	_trail_grad_tex.gradient = gradient
+	var grad_tex := GradientTexture1D.new()
+	grad_tex.gradient = gradient
+	mat.set_shader_parameter("gradient_tex", grad_tex)
+	_trail_display.material = mat
+	add_child(_trail_display)
 
 func _setup_bubble() -> void:
 	var img := Image.create(2, 2, false, Image.FORMAT_RGBA8)
@@ -102,23 +165,9 @@ func _process(delta: float) -> void:
 		position.x = screen_width
 		velocity.x = -velocity.x
 
-	# Spawn trail particles
-	_trail_timer += delta
-	if _trail_timer >= TRAIL_SPAWN_INTERVAL:
-		_trail_timer = 0.0
-		_spawn_trail_particle()
-
-	# Fade and remove trail particles
-	for child in _trail_container.get_children():
-		var age: float = child.get_meta("age") + delta
-		child.set_meta("age", age)
-		var t := age / TRAIL_PARTICLE_LIFETIME
-		if t >= 1.0:
-			child.queue_free()
-		else:
-			var s := lerpf(1.0, 0.2, t)
-			child.scale = Vector2(TRAIL_PARTICLE_SIZE * s, TRAIL_PARTICLE_SIZE * s)
-			child.modulate.a = 1.0 - t
+	# Update trail core and particle emitter to follow projectile
+	_trail_core.position = global_position
+	_trail_particles.position = global_position
 
 	# Check collision with flocks (circle-based)
 	var hit_flock: Node2D = flock_manager.check_projectile_collision(global_position, letter)
@@ -130,31 +179,6 @@ func _process(delta: float) -> void:
 	# Remove if off screen top
 	if position.y < -50:
 		queue_free()
-
-func _spawn_trail_particle() -> void:
-	var img := Image.create(2, 2, false, Image.FORMAT_RGBA8)
-	img.fill(Color.WHITE)
-	var tex := ImageTexture.create_from_image(img)
-
-	var sprite := Sprite2D.new()
-	sprite.texture = tex
-	sprite.scale = Vector2(TRAIL_PARTICLE_SIZE, TRAIL_PARTICLE_SIZE)
-	sprite.global_position = global_position
-
-	var mat := ShaderMaterial.new()
-	mat.shader = _trail_shader
-	mat.set_shader_parameter("ball_count", 1)
-	mat.set_shader_parameter("ball_positions", [Vector2.ZERO])
-	mat.set_shader_parameter("ball_radius", TRAIL_PARTICLE_SIZE * 0.45)
-	mat.set_shader_parameter("rect_size", Vector2(TRAIL_PARTICLE_SIZE, TRAIL_PARTICLE_SIZE))
-	mat.set_shader_parameter("gradient_tex", _trail_grad_tex)
-	mat.set_shader_parameter("caustic_strength", 0.3)
-	mat.set_shader_parameter("caustic_scale", 0.08)
-	mat.set_shader_parameter("caustic_speed", 0.6)
-	sprite.material = mat
-
-	sprite.set_meta("age", 0.0)
-	_trail_container.add_child(sprite)
 
 func _draw() -> void:
 	if font == null:
