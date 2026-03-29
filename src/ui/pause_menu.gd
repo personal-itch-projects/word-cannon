@@ -1,38 +1,30 @@
 extends Control
 
 var font: Font
-var continue_rect: Rect2
-var restart_rect: Rect2
-var settings_rect: Rect2
-var menu_rect: Rect2
-var hover_continue: bool = false
-var hover_restart: bool = false
-var hover_settings: bool = false
-var hover_menu: bool = false
 var screen_size: Vector2
+var continue_bubble: BubbleButton
+var restart_bubble: BubbleButton
+var settings_bubble: BubbleButton
+var menu_bubble: BubbleButton
 
 func _ready() -> void:
 	font = preload("res://assets/fonts/DM_Sans/DMSans-Regular.ttf")
 	screen_size = get_viewport().get_visible_rect().size
 	var center_x: float = screen_size.x / 2.0
 	var center_y: float = screen_size.y / 2.0
-	continue_rect = Rect2(center_x - 100, center_y - 30, 200, 50)
-	restart_rect = Rect2(center_x - 100, center_y + 40, 200, 50)
-	settings_rect = Rect2(center_x - 100, center_y + 110, 200, 50)
-	menu_rect = Rect2(center_x - 100, center_y + 180, 200, 50)
 
-func _process(_delta: float) -> void:
-	var mouse_pos := get_viewport().get_mouse_position()
-	var was_c := hover_continue
-	var was_r := hover_restart
-	var was_s := hover_settings
-	var was_m := hover_menu
-	hover_continue = continue_rect.has_point(mouse_pos) and visible
-	hover_restart = restart_rect.has_point(mouse_pos) and visible
-	hover_settings = settings_rect.has_point(mouse_pos) and visible
-	hover_menu = menu_rect.has_point(mouse_pos) and visible
-	if hover_continue != was_c or hover_restart != was_r or hover_settings != was_s or hover_menu != was_m:
-		queue_redraw()
+	continue_bubble = BubbleButton.create(self, Vector2(center_x, center_y - 5), GameManager.tr_text("CONTINUE"), GameManager.resume_game)
+	restart_bubble = BubbleButton.create(self, Vector2(center_x, center_y + 65), GameManager.tr_text("RESTART"), GameManager.restart_game)
+	settings_bubble = BubbleButton.create(self, Vector2(center_x, center_y + 135), GameManager.tr_text("SETTINGS"), GameManager.open_settings)
+	menu_bubble = BubbleButton.create(self, Vector2(center_x, center_y + 205), GameManager.tr_text("MENU"), GameManager.go_to_menu)
+
+	visibility_changed.connect(_on_visibility_changed)
+
+func _on_visibility_changed() -> void:
+	if visible:
+		for bubble in [continue_bubble, restart_bubble, settings_bubble, menu_bubble]:
+			if bubble:
+				bubble.reset_state()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible:
@@ -41,19 +33,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		GameManager.resume_game()
 		get_viewport().set_input_as_handled()
 		return
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		if continue_rect.has_point(event.position):
-			GameManager.resume_game()
-			get_viewport().set_input_as_handled()
-		elif restart_rect.has_point(event.position):
-			GameManager.restart_game()
-			get_viewport().set_input_as_handled()
-		elif settings_rect.has_point(event.position):
-			GameManager.open_settings()
-			get_viewport().set_input_as_handled()
-		elif menu_rect.has_point(event.position):
-			GameManager.go_to_menu()
-			get_viewport().set_input_as_handled()
 
 func _draw() -> void:
 	# Overlay
@@ -63,18 +42,3 @@ func _draw() -> void:
 	var title := GameManager.tr_text("PAUSED")
 	var title_size := font.get_string_size(title, HORIZONTAL_ALIGNMENT_CENTER, -1, 52)
 	draw_string(font, Vector2(screen_size.x / 2.0 - title_size.x / 2.0, screen_size.y / 2.0 - 60), title, HORIZONTAL_ALIGNMENT_CENTER, -1, 52, Color.WHITE)
-
-	# Buttons
-	_draw_button(continue_rect, GameManager.tr_text("CONTINUE"), hover_continue)
-	_draw_button(restart_rect, GameManager.tr_text("RESTART"), hover_restart)
-	_draw_button(settings_rect, GameManager.tr_text("SETTINGS"), hover_settings)
-	_draw_button(menu_rect, GameManager.tr_text("MENU"), hover_menu)
-
-func _draw_button(rect: Rect2, text: String, hovered: bool) -> void:
-	var bg_color := Color.WHITE
-	var border_color := Color("#1A1A1A") if not hovered else Color("#CC3333")
-	draw_rect(rect, bg_color)
-	draw_rect(rect, border_color, false, 2.0)
-	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, 24)
-	var text_pos := Vector2(rect.position.x + rect.size.x / 2.0 - text_size.x / 2.0, rect.position.y + rect.size.y / 2.0 + text_size.y / 4.0)
-	draw_string(font, text_pos, text, HORIZONTAL_ALIGNMENT_CENTER, -1, 24, Color("#1A1A1A"))

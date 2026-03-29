@@ -10,9 +10,7 @@ uniform vec2 rect_size = vec2(200.0, 200.0);
 uniform float threshold = 1.0;
 uniform float edge_width = 0.4;
 uniform vec4 fill_color : source_color = vec4(0.7, 0.85, 1.0, 0.3);
-uniform vec4 scorable_fill : source_color = vec4(0.2, 0.8, 0.3, 0.25);
 uniform vec4 edge_color : source_color = vec4(0.85, 0.93, 1.0, 0.55);
-uniform bool is_scorable = false;
 
 // Dent effect: temporary indentation at impact point
 uniform vec2 dent_pos = vec2(0.0);
@@ -46,7 +44,6 @@ void fragment() {
 	// Edge glow near the threshold boundary
 	float edge_factor = 1.0 - smoothstep(threshold, threshold + edge_width, field);
 
-	vec4 fill = is_scorable ? scorable_fill : fill_color;
-	COLOR = mix(fill, edge_color, edge_factor * 0.6);
-	COLOR.a = mix(fill.a, max(edge_color.a, fill.a), edge_factor);
+	COLOR = mix(fill_color, edge_color, edge_factor * 0.6);
+	COLOR.a = mix(fill_color.a, max(edge_color.a, fill_color.a), edge_factor);
 }

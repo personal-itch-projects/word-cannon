@@ -17,6 +17,7 @@ func _ready() -> void:
 	GameManager.score_changed.connect(_on_score_changed)
 	GameManager.lives_changed.connect(_on_lives_changed)
 	GameManager.level_changed.connect(_on_level_changed)
+	GameManager.goal_progress_changed.connect(_on_goal_progress_changed)
 	# Initial update
 	_on_score_changed(GameManager.score)
 	_on_lives_changed(GameManager.lives)
@@ -34,6 +35,9 @@ func _on_lives_changed(_lives: int) -> void:
 func _on_level_changed(_level: int) -> void:
 	queue_redraw()
 
+func _on_goal_progress_changed() -> void:
+	queue_redraw()
+
 func _draw() -> void:
 	# Score
 	draw_string(font_bold, Vector2(20, 40), GameManager.tr_text("SCORE") + ": " + str(GameManager.score), HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color("#1A1A1A"))
@@ -41,14 +45,18 @@ func _draw() -> void:
 	# Level
 	draw_string(font_bold, Vector2(20, 70), GameManager.tr_text("LEVEL") + ": " + str(GameManager.current_level + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color("#1A1A1A"))
 
-	# Timer
-	var cfg: Dictionary = GameManager.get_level_config()
-	var remaining: float = maxf(cfg["duration"] - GameManager.level_timer, 0.0)
-	var minutes: int = int(remaining) / 60
-	var seconds: int = int(remaining) % 60
+	# Goal progress (center)
+	var goal_text := _get_goal_text()
+	var goal_size := font_bold.get_string_size(goal_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 28)
+	draw_string(font_bold, Vector2(screen_size.x / 2.0 - goal_size.x / 2.0, 40), goal_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 28, Color("#1A1A1A"))
+
+	# Elapsed time (small, below goal)
+	var elapsed: int = int(GameManager.level_timer)
+	var minutes: int = elapsed / 60
+	var seconds: int = elapsed % 60
 	var timer_text := "%d:%02d" % [minutes, seconds]
-	var timer_size := font_bold.get_string_size(timer_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 28)
-	draw_string(font_bold, Vector2(screen_size.x / 2.0 - timer_size.x / 2.0, 40), timer_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 28, Color("#1A1A1A"))
+	var timer_size := font.get_string_size(timer_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 18)
+	draw_string(font, Vector2(screen_size.x / 2.0 - timer_size.x / 2.0, 62), timer_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color("#666666"))
 
 	# Lives
 	var lives_text := ""
@@ -62,6 +70,17 @@ func _draw() -> void:
 	# Arsenal
 	if platform and not platform.arsenal.is_empty():
 		_draw_arsenal()
+
+func _get_goal_text() -> String:
+	var cfg: Dictionary = GameManager.get_level_config()
+	match cfg["goal_type"]:
+		"words":
+			return GameManager.tr_text("Words:") + " " + str(GameManager.level_words) + "/" + str(cfg["goal_target"])
+		"score":
+			return GameManager.tr_text("Score:") + " " + str(GameManager.level_score) + "/" + str(cfg["goal_target"])
+		"words_of_length":
+			return str(cfg["goal_word_length"]) + GameManager.tr_text("-letter words:") + " " + str(GameManager.level_words_of_length) + "/" + str(cfg["goal_target"])
+	return ""
 
 func _draw_arsenal() -> void:
 	var count: int = platform.arsenal.size()

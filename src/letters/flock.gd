@@ -33,13 +33,11 @@ var _dent_pos: Vector2 = Vector2.ZERO
 var _dent_strength: float = 0.0
 var _popping: bool = false
 
-var font: Font
 var _bubble_sprite: Sprite2D
 var _bubble_material: ShaderMaterial
 
 func _ready() -> void:
 	velocity = Vector2(0, GameManager.get_level_config()["fall_speed"])
-	font = preload("res://assets/fonts/DM_Sans/DMSans-Regular.ttf")
 	_setup_bubble_visual()
 
 func _setup_bubble_visual() -> void:
@@ -56,7 +54,6 @@ func _setup_bubble_visual() -> void:
 	var shader := preload("res://src/shaders/metaball_bubble.gdshader")
 	_bubble_material = ShaderMaterial.new()
 	_bubble_material.shader = shader
-	_bubble_material.set_shader_parameter("is_scorable", false)
 	_bubble_material.set_shader_parameter("ball_radius", METABALL_RADIUS)
 	_bubble_sprite.material = _bubble_material
 
@@ -91,16 +88,9 @@ func _update_possible_words() -> void:
 	if letters.size() < WordDictionary.MIN_WORD_LENGTH:
 		best_word = {}
 		scorable = false
-		_update_scorable_visual()
 		return
 	best_word = WordDictionary.find_longest_word(letter_chars)
 	scorable = not best_word.is_empty()
-	_update_scorable_visual()
-
-func _update_scorable_visual() -> void:
-	if _bubble_material:
-		_bubble_material.set_shader_parameter("is_scorable", scorable)
-	queue_redraw()
 
 func apply_push(proj_velocity: Vector2) -> void:
 	push_velocity += proj_velocity * 0.25
@@ -292,18 +282,6 @@ func _resolve_collisions() -> void:
 					var nudge := Vector2(randf() - 0.5, randf() - 0.5).normalized() * COLLISION_DIAMETER * 0.5
 					letters[i].position += nudge
 					letters[j].position -= nudge
-
-func _draw() -> void:
-	# Draw word label above the bubble
-	if scorable:
-		var bubble_r := _get_bubble_radius()
-		var best := _get_best_word()
-		if not best.is_empty():
-			var label: String = str(best["word"]).to_upper()
-			var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_CENTER, -1, 16)
-			var text_x := -text_size.x / 2.0
-			var text_y := -bubble_r - 6
-			draw_string(font, Vector2(text_x, text_y), label, HORIZONTAL_ALIGNMENT_CENTER, -1, 16, Color(0.1, 0.6, 0.2))
 
 func _update_bubble_uniforms() -> void:
 	if not _bubble_material:

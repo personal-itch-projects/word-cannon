@@ -31,8 +31,10 @@ func _try_click_flock(click_pos: Vector2) -> void:
 			var exact: Dictionary = WordDictionary.find_exact_word(letter_chars)
 			flocks.remove_at(i)
 			if not exact.is_empty():
-				var score := _calculate_score(exact["word"].length(), exact["frequency"])
+				var word_len: int = exact["word"].length()
+				var score := _calculate_score(word_len, exact["frequency"])
 				GameManager.add_score(score)
+				GameManager.on_word_formed(word_len)
 				flock.pop_word(exact["word"])
 			else:
 				flock.pop()
