@@ -231,7 +231,12 @@ func reset_game() -> void:
 	current_level = 0
 	level_timer = 0.0
 	_reset_level_counters()
-	_pick_random_theme()
+	if themed_levels_enabled:
+		_pick_random_theme()
+	else:
+		current_theme_name = ""
+		_theme_words = []
+		_used_theme_words.clear()
 	score_changed.emit(score)
 	level_changed.emit(current_level)
 
