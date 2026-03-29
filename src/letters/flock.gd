@@ -299,7 +299,7 @@ func _draw() -> void:
 		var bubble_r := _get_bubble_radius()
 		var best := _get_best_word()
 		if not best.is_empty():
-			var label := best["word"].to_upper()
+			var label: String = str(best["word"]).to_upper()
 			var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_CENTER, -1, 16)
 			var text_x := -text_size.x / 2.0
 			var text_y := -bubble_r - 6
