@@ -4,13 +4,13 @@ const SPEED := 800.0
 const SIZE := 15.0
 
 # Trail: spawn soft circle particles at random offsets with random TTL
-const TRAIL_SPAWN_INTERVAL := 0.008
-const TRAIL_PARTICLES_PER_SPAWN := 3
-const TRAIL_PARTICLE_MIN_SIZE := 8.0
-const TRAIL_PARTICLE_MAX_SIZE := 18.0
-const TRAIL_MIN_TTL := 0.15
-const TRAIL_MAX_TTL := 0.45
-const TRAIL_SPREAD := 6.0
+const TRAIL_SPAWN_INTERVAL := 0.04
+const TRAIL_PARTICLES_PER_SPAWN := 2
+const TRAIL_PARTICLE_MIN_SIZE := 16.0
+const TRAIL_PARTICLE_MAX_SIZE := 28.0
+const TRAIL_MIN_TTL := 0.4
+const TRAIL_MAX_TTL := 0.8
+const TRAIL_SPREAD := 8.0
 
 # Bubble visual
 const BUBBLE_SIZE := 24.0
