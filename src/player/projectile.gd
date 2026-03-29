@@ -3,11 +3,13 @@ extends Node2D
 const SPEED := 800.0
 const SIZE := 15.0
 
-# Trail: single sprite with metaball shader, positions passed as uniforms
-# Same technique as flock.gd _update_bubble_uniforms()
-const TRAIL_SAMPLE_INTERVAL := 0.02
-const TRAIL_BALL_RADIUS := 8.0
-const TRAIL_MAX_POINTS := 16
+# Trail: spawn soft circle particles at random offsets with random TTL
+const TRAIL_SPAWN_INTERVAL := 0.025
+const TRAIL_PARTICLE_MIN_SIZE := 6.0
+const TRAIL_PARTICLE_MAX_SIZE := 14.0
+const TRAIL_MIN_TTL := 0.15
+const TRAIL_MAX_TTL := 0.4
+const TRAIL_SPREAD := 10.0
 
 # Bubble visual
 const BUBBLE_SIZE := 24.0
@@ -19,9 +21,8 @@ var font: Font
 var screen_width: float
 
 var _trail_timer: float = 0.0
-var _trail_positions: Array[Vector2] = []
-var _trail_sprite: Sprite2D
-var _trail_material: ShaderMaterial
+var _trail_container: Node2D
+var _trail_tex: ImageTexture
 var _bubble_sprite: Sprite2D
 var _bubble_material: ShaderMaterial
 
@@ -38,41 +39,20 @@ func _ready() -> void:
 	_setup_bubble()
 
 func _setup_trail() -> void:
-	_trail_positions.resize(TRAIL_MAX_POINTS)
-	for i in TRAIL_MAX_POINTS:
-		_trail_positions[i] = Vector2(-9999.0, -9999.0)
+	_trail_container = Node2D.new()
+	_trail_container.top_level = true
+	add_child(_trail_container)
 
-	var img := Image.create(2, 2, false, Image.FORMAT_RGBA8)
-	img.fill(Color.WHITE)
-	var tex := ImageTexture.create_from_image(img)
-
-	_trail_sprite = Sprite2D.new()
-	_trail_sprite.texture = tex
-	_trail_sprite.top_level = true
-	_trail_sprite.visible = false
-
-	var shader := preload("res://src/shaders/metaball_bubble.gdshader")
-	_trail_material = ShaderMaterial.new()
-	_trail_material.shader = shader
-	_trail_material.set_shader_parameter("ball_radius", TRAIL_BALL_RADIUS)
-
-	var gradient := Gradient.new()
-	gradient.offsets = PackedFloat32Array([0.0, 0.15, 0.5, 1.0])
-	gradient.colors = PackedColorArray([
-		Color(0.85, 0.93, 1.0, 0.55),
-		Color(0.78, 0.90, 1.0, 0.45),
-		Color(0.70, 0.85, 1.0, 0.30),
-		Color(0.65, 0.82, 1.0, 0.25),
-	])
-	var grad_tex := GradientTexture1D.new()
-	grad_tex.gradient = gradient
-	_trail_material.set_shader_parameter("gradient_tex", grad_tex)
-	_trail_material.set_shader_parameter("caustic_strength", 0.3)
-	_trail_material.set_shader_parameter("caustic_scale", 0.08)
-	_trail_material.set_shader_parameter("caustic_speed", 0.5)
-
-	_trail_sprite.material = _trail_material
-	add_child(_trail_sprite)
+	# Pre-bake a soft radial gradient circle texture (shared by all particles)
+	var tex_size := 32
+	var img := Image.create(tex_size, tex_size, false, Image.FORMAT_RGBA8)
+	var center := float(tex_size) / 2.0
+	for y in tex_size:
+		for x in tex_size:
+			var dist := Vector2(x - center + 0.5, y - center + 0.5).length() / center
+			var alpha := clampf(1.0 - dist * dist, 0.0, 1.0)
+			img.set_pixel(x, y, Color(0.75, 0.88, 1.0, alpha * 0.5))
+	_trail_tex = ImageTexture.create_from_image(img)
 
 func _setup_bubble() -> void:
 	var img := Image.create(2, 2, false, Image.FORMAT_RGBA8)
@@ -122,14 +102,24 @@ func _process(delta: float) -> void:
 		position.x = screen_width
 		velocity.x = -velocity.x
 
-	# Sample trail positions into ring buffer
+	# Spawn trail particles
 	_trail_timer += delta
-	if _trail_timer >= TRAIL_SAMPLE_INTERVAL:
+	if _trail_timer >= TRAIL_SPAWN_INTERVAL:
 		_trail_timer = 0.0
-		for i in range(TRAIL_MAX_POINTS - 1, 0, -1):
-			_trail_positions[i] = _trail_positions[i - 1]
-		_trail_positions[0] = global_position
-	_update_trail_uniforms()
+		_spawn_trail_particle()
+
+	# Age and remove trail particles
+	for child in _trail_container.get_children():
+		var age: float = child.get_meta("age") + delta
+		child.set_meta("age", age)
+		var ttl: float = child.get_meta("ttl")
+		var t := age / ttl
+		if t >= 1.0:
+			child.queue_free()
+		else:
+			var s: float = child.get_meta("base_scale") * (1.0 - t)
+			child.scale = Vector2(s, s)
+			child.modulate.a = 1.0 - t * t
 
 	# Check collision with flocks (circle-based)
 	var hit_flock: Node2D = flock_manager.check_projectile_collision(global_position, letter)
@@ -142,49 +132,20 @@ func _process(delta: float) -> void:
 	if position.y < -50:
 		queue_free()
 
-func _update_trail_uniforms() -> void:
-	if not _trail_material:
-		return
-
-	# Calculate bounding box of valid trail positions
-	var min_pos := Vector2(INF, INF)
-	var max_pos := Vector2(-INF, -INF)
-	var count := 0
-	for pos in _trail_positions:
-		if pos.x < -9000.0:
-			continue
-		min_pos = Vector2(minf(min_pos.x, pos.x), minf(min_pos.y, pos.y))
-		max_pos = Vector2(maxf(max_pos.x, pos.x), maxf(max_pos.y, pos.y))
-		count += 1
-
-	if count == 0:
-		_trail_sprite.visible = false
-		return
-	_trail_sprite.visible = true
-
-	var padding := TRAIL_BALL_RADIUS + 10.0
-	var center := (min_pos + max_pos) / 2.0
-	var half_size := (max_pos - min_pos) / 2.0 + Vector2(padding, padding)
-	half_size = Vector2(maxf(half_size.x, padding), maxf(half_size.y, padding))
-
-	# Position and scale sprite to cover all trail points (2x2 texture -> scale by half_size)
-	_trail_sprite.global_position = center
-	_trail_sprite.scale = half_size
-
-	var rect_size := half_size * 2.0
-	_trail_material.set_shader_parameter("rect_size", rect_size)
-	_trail_material.set_shader_parameter("ball_count", count)
-
-	# Convert world positions to sprite-local coordinates
-	var local_positions: Array[Vector2] = []
-	for pos in _trail_positions:
-		if pos.x < -9000.0:
-			local_positions.append(Vector2(-9999.0, -9999.0))
-		else:
-			local_positions.append(pos - center)
-	while local_positions.size() < 16:
-		local_positions.append(Vector2(-9999.0, -9999.0))
-	_trail_material.set_shader_parameter("ball_positions", local_positions)
+func _spawn_trail_particle() -> void:
+	var sprite := Sprite2D.new()
+	sprite.texture = _trail_tex
+	var particle_size := randf_range(TRAIL_PARTICLE_MIN_SIZE, TRAIL_PARTICLE_MAX_SIZE)
+	var s := particle_size / 32.0
+	sprite.scale = Vector2(s, s)
+	sprite.global_position = global_position + Vector2(
+		randf_range(-TRAIL_SPREAD, TRAIL_SPREAD),
+		randf_range(-TRAIL_SPREAD, TRAIL_SPREAD),
+	)
+	sprite.set_meta("age", 0.0)
+	sprite.set_meta("ttl", randf_range(TRAIL_MIN_TTL, TRAIL_MAX_TTL))
+	sprite.set_meta("base_scale", s)
+	_trail_container.add_child(sprite)
 
 func _draw() -> void:
 	if font == null:
