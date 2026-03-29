@@ -95,12 +95,13 @@ func _setup_bubble() -> void:
 func _process(delta: float) -> void:
 	position += velocity * delta
 
-	# Bounce off side borders
-	if position.x < 0:
-		position.x = 0
+	# Bounce off play area borders
+	var bounds := GameManager.get_play_bounds()
+	if position.x < bounds.x:
+		position.x = bounds.x
 		velocity.x = -velocity.x
-	elif position.x > screen_width:
-		position.x = screen_width
+	elif position.x > bounds.y:
+		position.x = bounds.y
 		velocity.x = -velocity.x
 
 	# Spawn trail particles

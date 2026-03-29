@@ -89,8 +89,8 @@ func _setup_arsenal_bubbles() -> void:
 	grad_tex.gradient = gradient
 
 	var total_w := ARSENAL_DISPLAY_COUNT * ARSENAL_BUBBLE_SIZE + (ARSENAL_DISPLAY_COUNT - 1) * ARSENAL_GAP
-	var start_x := screen_size.x / 2.0 - total_w / 2.0
-	var y := screen_size.y - ARSENAL_BUBBLE_SIZE / 2.0 - 12.0
+	var start_x := screen_size.x - total_w - 20.0
+	var y := screen_size.y - ARSENAL_BUBBLE_SIZE / 2.0 - 16.0
 
 	for i in ARSENAL_DISPLAY_COUNT:
 		var pos := Vector2(start_x + i * (ARSENAL_BUBBLE_SIZE + ARSENAL_GAP) + ARSENAL_BUBBLE_SIZE / 2.0, y)

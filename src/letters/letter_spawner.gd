@@ -69,8 +69,9 @@ func _find_free_x_position(letter_count: int = 1) -> float:
 	const MAX_ATTEMPTS := 10
 	const BUBBLE_DIAMETER := 104.0  # (FLOAT_RADIUS + 22) * 2
 	var word_extent := BUBBLE_DIAMETER
-	var left_bound := 40.0
-	var right_bound := screen_width - 40.0 - word_extent
+	var bounds := GameManager.get_play_bounds()
+	var left_bound := bounds.x + 40.0
+	var right_bound := bounds.y - 40.0 - word_extent
 	if right_bound < left_bound:
 		return -1.0
 	for _attempt in MAX_ATTEMPTS:

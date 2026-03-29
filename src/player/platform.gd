@@ -50,7 +50,8 @@ func _ready() -> void:
 	screen_width = get_viewport().get_visible_rect().size.x
 	font = preload("res://assets/fonts/Nunito/Nunito-Regular.ttf")
 	var screen_height: float = get_viewport().get_visible_rect().size.y
-	position = Vector2(screen_width / 2.0, screen_height - 50)
+	var bounds := GameManager.get_play_bounds()
+	position = Vector2((bounds.x + bounds.y) / 2.0, screen_height - 50)
 	_fill_arsenal()
 	WordDictionary.language_changed.connect(_on_language_changed)
 
@@ -58,7 +59,8 @@ func _on_language_changed(_lang: String) -> void:
 	_fill_arsenal()
 
 func reset() -> void:
-	position.x = screen_width / 2.0
+	var bounds := GameManager.get_play_bounds()
+	position.x = (bounds.x + bounds.y) / 2.0
 	wobble_intensity = 0.0
 	recoil_offset = 0.0
 	squash = 0.0
@@ -77,7 +79,8 @@ func _process(delta: float) -> void:
 	if Input.is_physical_key_pressed(GameManager.bindings["move_right"]):
 		direction = 1.0
 	position.x += direction * MOVE_SPEED * delta
-	position.x = clampf(position.x, 50.0, screen_width - 50.0)
+	var bounds := GameManager.get_play_bounds()
+	position.x = clampf(position.x, bounds.x + 50.0, bounds.y - 50.0)
 
 	is_moving = direction != 0.0
 

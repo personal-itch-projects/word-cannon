@@ -7,6 +7,8 @@ signal goal_progress_changed
 signal stage_completed(stage: int)
 
 const BOTTOM_PENALTY := 10
+const PLAY_AREA_WIDTH := 800.0
+const MIN_WINDOW_SIZE := Vector2i(960, 540)
 const LEVELS := [
 	# Stage 1 — Form N words (any)
 	{ "goal_type": "words", "goal_target": 10, "goal_word_length": 0, "letter_count": -1, "fall_speed": 20.0, "spawn_min": 1.2, "spawn_max": 2.5, "missing_letters": 0 },
@@ -74,6 +76,16 @@ func tr_text(key: String) -> String:
 	if _translations.has(key):
 		return _translations[key].get(language, key)
 	return key
+
+func _ready() -> void:
+	get_window().min_size = MIN_WINDOW_SIZE
+
+func get_play_bounds() -> Vector2:
+	var screen_w: float = get_viewport().get_visible_rect().size.x
+	if screen_w <= PLAY_AREA_WIDTH:
+		return Vector2(0.0, screen_w)
+	var margin := (screen_w - PLAY_AREA_WIDTH) / 2.0
+	return Vector2(margin, screen_w - margin)
 
 func _process(delta: float) -> void:
 	if current_state != GameState.State.PLAYING:
