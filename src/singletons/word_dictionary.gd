@@ -82,6 +82,37 @@ func _trie_insert(word: String) -> void:
 		node = node["c"][ch]
 	node["w"] = word
 
+func find_exact_word(letters: Array[String]) -> Dictionary:
+	if letters.size() < MIN_WORD_LENGTH:
+		return {}
+	var budget: Dictionary = {}
+	for l in letters:
+		var ch := l.to_lower()
+		budget[ch] = budget.get(ch, 0) + 1
+	_best_word = ""
+	_best_freq = 0
+	_weight_sum = 0.0
+	_trie_dfs_exact(_trie_root, budget, 0, letters.size())
+	if _best_word.is_empty():
+		return {}
+	return {"word": _best_word, "frequency": _best_freq}
+
+func _trie_dfs_exact(node: Dictionary, budget: Dictionary, depth: int, target_len: int) -> void:
+	if depth == target_len:
+		if not node["w"].is_empty():
+			var freq: int = word_table[node["w"]]
+			var weight: float = float(freq)
+			_weight_sum += weight
+			if randf() < weight / _weight_sum:
+				_best_word = node["w"]
+				_best_freq = freq
+		return
+	for ch in node["c"]:
+		if budget.get(ch, 0) > 0:
+			budget[ch] -= 1
+			_trie_dfs_exact(node["c"][ch], budget, depth + 1, target_len)
+			budget[ch] += 1
+
 func find_longest_word(letters: Array[String]) -> Dictionary:
 	# Build letter budget: char -> count
 	var budget: Dictionary = {}

@@ -22,18 +22,26 @@ func _unhandled_input(event: InputEvent) -> void:
 func _try_click_flock(click_pos: Vector2) -> void:
 	for i in range(flocks.size() - 1, -1, -1):
 		var flock: Node2D = flocks[i]
-		if flock.scorable and not flock._popping and flock.get_bounding_rect().has_point(click_pos):
-			var best: Dictionary = flock._get_best_word()
-			var score := _calculate_score(best["word"].length(), best["frequency"])
-			GameManager.add_score(score)
+		if flock._popping or flock.letters.size() < WordDictionary.MIN_WORD_LENGTH:
+			continue
+		if flock.get_bounding_rect().has_point(click_pos):
+			var letter_chars: Array[String] = []
+			for l in flock.letters:
+				letter_chars.append(l.letter)
+			var exact: Dictionary = WordDictionary.find_exact_word(letter_chars)
 			flocks.remove_at(i)
-			flock.pop_word(best["word"])
+			if not exact.is_empty():
+				var score := _calculate_score(exact["word"].length(), exact["frequency"])
+				GameManager.add_score(score)
+				flock.pop_word(exact["word"])
+			else:
+				flock.pop()
 			get_viewport().set_input_as_handled()
 			return
 
-func is_click_on_scorable(click_pos: Vector2) -> bool:
+func is_click_on_flock(click_pos: Vector2) -> bool:
 	for flock in flocks:
-		if flock.scorable and not flock._popping and flock.get_bounding_rect().has_point(click_pos):
+		if not flock._popping and flock.letters.size() >= WordDictionary.MIN_WORD_LENGTH and flock.get_bounding_rect().has_point(click_pos):
 			return true
 	return false
 
