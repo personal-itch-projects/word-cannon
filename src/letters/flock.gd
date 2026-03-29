@@ -33,6 +33,7 @@ var _dent_pos: Vector2 = Vector2.ZERO
 var _dent_strength: float = 0.0
 var _popping: bool = false
 var is_intro_flock: bool = false
+var _debug_label: Label = null
 
 var _bubble_sprite: Sprite2D
 var _bubble_material: ShaderMaterial
@@ -40,6 +41,18 @@ var _bubble_material: ShaderMaterial
 func _ready() -> void:
 	velocity = Vector2(0, GameManager.get_level_config()["fall_speed"])
 	_setup_bubble_visual()
+
+func set_debug_info(word: String, missing: Array[String]) -> void:
+	if not OS.is_debug_build():
+		return
+	_debug_label = Label.new()
+	_debug_label.text = "%s  [%s]" % [word, ",".join(missing)]
+	_debug_label.add_theme_font_size_override("font_size", 14)
+	_debug_label.add_theme_color_override("font_color", Color("#FF4444"))
+	_debug_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_debug_label.position = Vector2(-100, -_get_bubble_radius() - 22)
+	_debug_label.size = Vector2(200, 20)
+	add_child(_debug_label)
 
 func _setup_bubble_visual() -> void:
 	# Sprite2D with analytical metaball shader - computes the field per-pixel

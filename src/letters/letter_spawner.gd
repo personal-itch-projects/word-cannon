@@ -65,7 +65,21 @@ func _spawn_theme_word(gaps: int) -> bool:
 		letter_node.set_script(FallingLetterScript)
 		letter_node.setup(letter_char, Vector2.ZERO)
 		letter_nodes.append(letter_node)
-	flock_manager.create_flock(letter_nodes, Vector2(x_pos, -30))
+	var flock: Node2D = flock_manager.create_flock(letter_nodes, Vector2(x_pos, -30))
+	# Compute missing letters for debug
+	var upper_word := word.to_upper()
+	var missing: Array[String] = []
+	var kept_upper: Array[String] = []
+	for k in kept_letters:
+		kept_upper.append(k.to_upper())
+	for c_idx in upper_word.length():
+		var ch: String = upper_word[c_idx]
+		var found := kept_upper.find(ch)
+		if found >= 0:
+			kept_upper.remove_at(found)
+		else:
+			missing.append(ch)
+	flock.set_debug_info(upper_word, missing)
 	return true
 
 func _spawn_single_letter() -> void:

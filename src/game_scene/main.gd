@@ -253,6 +253,7 @@ func _create_intro_flock(word: String, pos: Vector2) -> Dictionary:
 	var flock: Node2D = flock_manager.create_flock(letter_nodes, pos)
 	flock.velocity = Vector2.ZERO
 	flock.is_intro_flock = true
+	flock.set_debug_info(word, missing_letters)
 
 	return {flock = flock, word = word, missing_letters = missing_letters}
 
