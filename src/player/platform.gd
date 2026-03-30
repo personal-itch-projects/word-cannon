@@ -1,7 +1,7 @@
 extends Node2D
 
 const MOVE_SPEED := 400.0
-const BARREL_TIP_DISTANCE := 78.0  # Distance from cannon pivot to barrel tip in 2D pixels
+const BARREL_TIP_DISTANCE := 90.0  # Distance from cannon pivot to barrel tip in 2D pixels
 
 # Jiggle animation
 const WOBBLE_BUILDUP := 10.0
@@ -161,7 +161,7 @@ func _shoot() -> void:
 		return
 	recoil_offset = RECOIL_STRENGTH
 	squash = SHOOT_SQUASH
-	SfxManager.play(SfxManager.sfx_arsenal_activated)
+	SfxManager.play_random(SfxManager.sfx_bubble_fire)
 
 	arsenal.pop_front()
 	var mouse_pos := get_viewport().get_mouse_position()
