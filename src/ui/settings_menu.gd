@@ -25,6 +25,8 @@ func _ready() -> void:
 func _on_visibility_changed() -> void:
 	if visible:
 		waiting_for_key = ""
+		var from_game := GameManager.previous_state == GameState.State.PAUSED
+		language_bubble.set_visible(not from_game)
 		_rebuild_all()
 		for bubble in [move_left_bubble, move_right_bubble, language_bubble, back_bubble]:
 			if bubble:
