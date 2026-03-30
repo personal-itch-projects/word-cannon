@@ -13,7 +13,7 @@ var _camera: Camera3D
 var _ship_node: Node3D
 var _cannon_node: Node3D
 var _ship_root: Node3D  # Root 3D node that holds ship + cannon
-var _current_facing: float = 0.0  # Y rotation of ship (0 = right-facing, PI = left-facing)
+var _current_facing: float = PI  # Y rotation of ship (PI = right-facing, 0 = left-facing)
 var _last_cannon_angle: float = 0.0
 var _turn_tween: Tween
 
@@ -32,6 +32,7 @@ func _setup_viewport() -> void:
 	# Create 3D scene root
 	_ship_root = Node3D.new()
 	_ship_root.name = "ShipRoot"
+	_ship_root.rotation.y = PI
 	_viewport.add_child(_ship_root)
 
 	# Add lighting
@@ -61,22 +62,22 @@ func _setup_viewport() -> void:
 	var cannon_scene := load("res://assets/models/cannon-mobile.glb") as PackedScene
 	_cannon_node = cannon_scene.instantiate()
 	_cannon_node.name = "Cannon"
-	# Position cannon on the ship deck (visible from front)
-	_cannon_node.position = Vector3(0, 0.6, 0.0)
-	_cannon_node.scale = Vector3(1.2, 1.2, 1.2)
-	# Pitch the cannon barrel upward so it points up
-	_cannon_node.rotation.x = -0.8
+	# Position cannon on the ship deck (centered so visible from side)
+	_cannon_node.position = Vector3(0, 1.0, 0.0)
+	_cannon_node.scale = Vector3(1.5, 1.5, 1.5)
+	# Pitch the cannon barrel upward
+	_cannon_node.rotation.x = -1.0
 	_ship_root.add_child(_cannon_node)
 
-	# Scale down ship to fit viewport
-	_ship_root.scale = Vector3(0.6, 0.6, 0.6)
+	# Scale down ship to fit viewport including mast/sail
+	_ship_root.scale = Vector3(0.25, 0.25, 0.25)
 
-	# Camera: front view (анфас) - looking straight at the ship from the front
+	# Camera: side view - looking at the ship from the side (profile)
 	_camera = Camera3D.new()
 	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	_camera.size = 2.5
-	_camera.position = Vector3(0, 0.8, 5.0)
-	_camera.rotation_degrees = Vector3(0, 0, 0)
+	_camera.size = 3.0
+	_camera.position = Vector3(5.0, 1.2, 0.0)
+	_camera.rotation_degrees = Vector3(0, 90, 0)
 	_viewport.add_child(_camera)
 
 	# Sprite2D to display the viewport texture
@@ -90,9 +91,10 @@ func _setup_viewport() -> void:
 func set_cannon_angle(angle: float) -> void:
 	if _cannon_node and not is_equal_approx(angle, _last_cannon_angle):
 		_last_cannon_angle = angle
-		# From front view, cannon sweeps left/right via Z-axis rotation
-		var compensated := angle if _current_facing < PI * 0.5 else -angle
-		_cannon_node.rotation.z = -compensated
+		# From side view, cannon sweeps left/right via Z-axis rotation
+		# (tilts the barrel visually from the profile perspective)
+		var compensated := angle if _current_facing > PI * 0.5 else -angle
+		_cannon_node.rotation.z = compensated
 		_request_update()
 
 func set_ship_direction(direction: float) -> void:
@@ -101,9 +103,9 @@ func set_ship_direction(direction: float) -> void:
 		return
 	var target_y: float
 	if direction > 0.0:
-		target_y = 0.0  # Facing right
+		target_y = PI   # Facing right
 	else:
-		target_y = PI   # Facing left
+		target_y = 0.0  # Facing left
 
 	if is_equal_approx(target_y, _current_facing):
 		return
