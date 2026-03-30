@@ -133,8 +133,9 @@ func _process(delta: float) -> void:
 		queue_free()
 		return
 
-	# Remove if off screen top
-	if position.y < -50:
+	# Remove if outside viewport
+	var screen_height: float = get_viewport().get_visible_rect().size.y
+	if position.y < -50 or position.y > screen_height + 50 or position.x < -50 or position.x > screen_width + 50:
 		queue_free()
 
 func _spawn_trail_particle() -> void:
