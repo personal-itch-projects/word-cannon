@@ -28,6 +28,8 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	if visible:
+		screen_size = get_viewport().get_visible_rect().size
+		_speed_button_rect = Rect2(screen_size.x - 70, 20, 50, 30)
 		var mouse_pos := get_viewport().get_mouse_position()
 		_speed_hover = _speed_button_rect.has_point(mouse_pos)
 		queue_redraw()
@@ -128,11 +130,15 @@ func _setup_arsenal_bubbles() -> void:
 func _update_arsenal_bubbles() -> void:
 	if not platform:
 		return
+	var current_size := get_viewport().get_visible_rect().size
+	var total_w := ARSENAL_DISPLAY_COUNT * ARSENAL_BUBBLE_SIZE + (ARSENAL_DISPLAY_COUNT - 1) * ARSENAL_GAP
+	var start_x := current_size.x - total_w - 20.0
+	var y := current_size.y - ARSENAL_BUBBLE_SIZE / 2.0 - 16.0
 	for i in ARSENAL_DISPLAY_COUNT:
-		if i < platform.arsenal.size():
-			_arsenal_sprites[i].visible = true
-		else:
-			_arsenal_sprites[i].visible = false
+		var pos := Vector2(start_x + i * (ARSENAL_BUBBLE_SIZE + ARSENAL_GAP) + ARSENAL_BUBBLE_SIZE / 2.0, y)
+		_arsenal_positions[i] = pos
+		_arsenal_sprites[i].position = pos
+		_arsenal_sprites[i].visible = i < platform.arsenal.size()
 
 func _draw_arsenal_letters() -> void:
 	if not platform:
