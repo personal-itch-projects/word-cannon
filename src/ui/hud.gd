@@ -1,7 +1,7 @@
 extends Control
 
 const ARSENAL_FONT_SIZE := 16
-const ARSENAL_DISPLAY_COUNT := 5
+const ARSENAL_DISPLAY_COUNT := 3
 const ARSENAL_BUBBLE_SIZE := 28.0
 const ARSENAL_GAP := 8.0
 

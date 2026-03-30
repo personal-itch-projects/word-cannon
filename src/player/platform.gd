@@ -14,7 +14,7 @@ const RECOIL_RETURN := 8.0
 const SHOOT_SQUASH := 0.15
 const SQUASH_RETURN := 5.0
 
-const ARSENAL_SIZE := 10
+const ARSENAL_SIZE := 3
 
 var screen_width: float
 var arsenal: Array[String] = []
@@ -175,23 +175,35 @@ func _get_cannon_tip(angle: float) -> Vector2:
 
 func _fill_arsenal() -> void:
 	arsenal.clear()
-	var allowed := GameManager.get_allowed_letters()
-	var flock_data := _get_flock_letter_arrays()
+	var flock_data := _get_flock_data()
 	for i in ARSENAL_SIZE:
+		var allowed := _get_unique_allowed()
 		if flock_data.is_empty():
 			arsenal.append(WordDictionary.pick_weighted_letter(allowed))
 		else:
 			arsenal.append(WordDictionary.pick_slot_aware_letter(flock_data, allowed))
 
 func _append_arsenal_letter() -> void:
-	var allowed := GameManager.get_allowed_letters()
-	var flock_data := _get_flock_letter_arrays()
+	var allowed := _get_unique_allowed()
+	var flock_data := _get_flock_data()
 	if flock_data.is_empty():
 		arsenal.append(WordDictionary.pick_weighted_letter(allowed))
 	else:
 		arsenal.append(WordDictionary.pick_slot_aware_letter(flock_data, allowed))
 
-func _get_flock_letter_arrays() -> Array:
+func _get_unique_allowed() -> String:
+	var allowed := GameManager.get_allowed_letters()
+	var existing: Dictionary = {}
+	for letter in arsenal:
+		existing[letter.to_lower()] = true
+	var filtered := ""
+	for i in allowed.length():
+		if not existing.has(allowed[i].to_lower()):
+			filtered += allowed[i]
+	return filtered if not filtered.is_empty() else allowed
+
+func _get_flock_data() -> Array:
+	var screen_h: float = get_viewport().get_visible_rect().size.y
 	var result: Array = []
 	for flock in flock_manager.flocks:
 		if flock._popping:
@@ -199,7 +211,8 @@ func _get_flock_letter_arrays() -> Array:
 		var flock_letters: Array[String] = []
 		for l in flock.letters:
 			flock_letters.append(l.letter)
-		result.append(flock_letters)
+		var proximity := clampf(flock.global_position.y / screen_h, 0.0, 1.0)
+		result.append({"letters": flock_letters, "bottom_proximity": proximity})
 	return result
 
 func _create_loaded_projectile() -> void:

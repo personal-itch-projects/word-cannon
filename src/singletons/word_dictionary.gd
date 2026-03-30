@@ -27,7 +27,7 @@ var language: String = "en"           # "en" or "ru"
 var letter_weights: Dictionary = {}   # letter -> float weight
 var _weight_total: float = 0.0
 var _alphabet: String = ""
-var _sorted_words: Array = []        # words sorted by frequency descending
+var _spawn_words: Array = []         # spawn-only words sorted by frequency descending
 
 # Trie: each node is { "c": { char -> node }, "w": "" or word_string }
 var _trie_root: Dictionary = {}
@@ -51,7 +51,23 @@ func load_dictionary(lang: String) -> void:
 	word_table.clear()
 	letter_count_table.clear()
 	_trie_root = {"c": {}, "w": ""}
-	var path := "res://assets/data/words.%s.csv" % lang
+	_spawn_words.clear()
+
+	# Load full validation dataset (merged), fallback to spawn file
+	var full_path := "res://assets/data/words.%s.full.csv" % lang
+	var spawn_path := "res://assets/data/words.%s.csv" % lang
+	if FileAccess.file_exists(full_path):
+		_load_word_file(full_path, lang)
+	else:
+		_load_word_file(spawn_path, lang)
+
+	# Load spawn word list (subset used for flock word picking)
+	_load_spawn_words(spawn_path, lang)
+
+	_compute_letter_weights()
+	language_changed.emit(lang)
+
+func _load_word_file(path: String, lang: String) -> void:
 	var check_fn: Callable = _is_alpha if lang == "en" else _is_cyrillic
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
@@ -74,16 +90,29 @@ func load_dictionary(lang: String) -> void:
 		word_table[word] = freq
 		letter_count_table[word] = _count_letters(word)
 		_trie_insert(word)
-	_compute_letter_weights()
-	_build_sorted_words()
-	language_changed.emit(lang)
 
-func _build_sorted_words() -> void:
-	_sorted_words.clear()
-	for word in word_table:
-		_sorted_words.append(word)
-	_sorted_words.sort_custom(func(a: String, b: String) -> bool:
-		return word_table[a] > word_table[b]
+func _load_spawn_words(path: String, lang: String) -> void:
+	var check_fn: Callable = _is_alpha if lang == "en" else _is_cyrillic
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		push_error("Failed to open spawn word list: " + path)
+		return
+	file.get_line()  # skip header
+	while not file.eof_reached():
+		var line := file.get_line().strip_edges()
+		if line.is_empty():
+			continue
+		var parts := line.split(",")
+		if parts.size() < 2:
+			continue
+		var word := parts[0].to_lower()
+		if word.length() < MIN_WORD_LENGTH:
+			continue
+		if not check_fn.call(word):
+			continue
+		_spawn_words.append(word)
+	_spawn_words.sort_custom(func(a: String, b: String) -> bool:
+		return word_table.get(a, 0) > word_table.get(b, 0)
 	)
 
 func _trie_insert(word: String) -> void:
@@ -250,43 +279,61 @@ func _trie_count_dfs(node: Dictionary, budget: Dictionary, depth: int) -> void:
 			_trie_count_dfs(node["c"][ch], budget, depth + 1)
 			budget[ch] += 1
 
-# Slot-aware letter selection: scores each candidate letter by how many
-# flocks it helps, weighted by slot urgency, then samples proportionally.
+# Completion-based letter selection: finds which letters each flock needs to
+# complete dictionary words, weighted by proximity to bottom.
 # Falls back to frequency-based weights when no flocks exist or scores are low.
 const SLOT_SCORE_THRESHOLD := 5.0
+const MAX_COMPLETION_GAPS := 4
 
-func pick_slot_aware_letter(flock_letter_arrays: Array, allowed: String) -> String:
+func find_completion_letters(flock_letters: Array) -> Dictionary:
+	## Returns {letter: score} for letters that help complete words containing flock_letters.
+	var flock_counts := {}
+	for l in flock_letters:
+		var ch: String = l.to_lower()
+		flock_counts[ch] = flock_counts.get(ch, 0) + 1
+	var letter_scores: Dictionary = {}
+	for word in word_table:
+		if word.length() < flock_letters.size():
+			continue
+		var word_counts: Dictionary = letter_count_table[word]
+		if not _is_multiset_subset(flock_counts, word_counts):
+			continue
+		# Word contains all flock letters — find missing ones
+		var missing: Dictionary = {}
+		var missing_count := 0
+		for ch in word_counts:
+			var need: int = word_counts[ch] - flock_counts.get(ch, 0)
+			if need > 0:
+				missing[ch] = need
+				missing_count += need
+		if missing_count == 0 or missing_count > MAX_COMPLETION_GAPS:
+			continue
+		# Score: longer words with fewer missing letters are better
+		var score: float = float(word.length()) / float(missing_count)
+		for ch in missing:
+			letter_scores[ch] = letter_scores.get(ch, 0.0) + score * float(missing[ch])
+	return letter_scores
+
+func pick_slot_aware_letter(flock_data: Array, allowed: String) -> String:
 	if allowed.is_empty():
 		return ""
 
 	var scores: Dictionary = {}
 	var total_slot_score := 0.0
 
-	for flock_letters in flock_letter_arrays:
-		# Build budget from flock's current letters
-		var budget: Dictionary = {}
-		for l in flock_letters:
-			var ch: String = l.to_lower()
-			budget[ch] = budget.get(ch, 0) + 1
+	for entry in flock_data:
+		var flock_letters: Array = entry["letters"]
+		var bottom_proximity: float = entry.get("bottom_proximity", 0.5)
+		var proximity_weight := 1.0 + bottom_proximity * 3.0
 
-		var baseline := count_reachable_words(budget)
-		var empty_spaces := maxi(MIN_WORD_LENGTH - flock_letters.size(), 1)
-		var urgency := 1.0 / float(empty_spaces)
-
-		# Score each candidate letter by marginal value for this flock
+		var completion_scores := find_completion_letters(flock_letters)
 		for i in allowed.length():
 			var ch := allowed[i].to_lower()
-			budget[ch] = budget.get(ch, 0) + 1
-			var reachable_with := count_reachable_words(budget)
-			budget[ch] -= 1
-			if budget[ch] == 0:
-				budget.erase(ch)
-
-			var marginal := reachable_with - baseline
-			if marginal > 0:
-				var contribution := float(marginal) * urgency
-				scores[ch] = scores.get(ch, 0.0) + contribution
-				total_slot_score += contribution
+			var letter_score: float = completion_scores.get(ch, 0.0)
+			if letter_score > 0.0:
+				var weighted := letter_score * proximity_weight
+				scores[ch] = scores.get(ch, 0.0) + weighted
+				total_slot_score += weighted
 
 	# Blend slot scores with frequency weights (smooth transition)
 	var alpha := minf(1.0, total_slot_score / SLOT_SCORE_THRESHOLD) if total_slot_score > 0.0 else 0.0
@@ -334,7 +381,7 @@ func pick_word_by_difficulty(difficulty: float, min_len: int, max_len: int) -> D
 	## Pick a word based on difficulty (0.0 = common, 1.0 = rare).
 	## Returns {word: String, frequency: int} or empty dict.
 	var candidates: Array = []
-	for word in _sorted_words:
+	for word in _spawn_words:
 		if word.length() >= min_len and word.length() <= max_len:
 			candidates.append(word)
 	if candidates.is_empty():

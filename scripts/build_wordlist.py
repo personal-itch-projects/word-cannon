@@ -13,6 +13,7 @@ from pathlib import Path
 OUT_DIR = Path(__file__).resolve().parent.parent / "assets" / "data"
 MIN_LEN = 3
 CUMULATIVE_CUTOFF = 0.95  # keep top 95% of total frequency mass
+MIN_FREQ_FOR_UNVETTED = 50  # minimum frequency for words not in curated dictionaries
 
 EN_RE = re.compile(r"^[a-z]+$")
 RU_RE = re.compile(r"^[а-яё]+$")
@@ -93,10 +94,25 @@ def build_english() -> None:
     print("[en] Downloading FrequencyWords English list ...")
     raw = _download(FREQ_EN_URL).decode("utf-8")
     all_words = _parse_freq_lines(raw, EN_RE)
+    freq_map = {w: c for w, c in all_words}
+
+    # Spawn dataset: ENABLE ∩ FrequencyWords, with cumulative cutoff
     words = [(w, c) for w, c in all_words if w in enable]
     print(f"[en] Parsed {len(all_words)} valid words, {len(words)} in ENABLE")
     keep = _apply_cumulative_cutoff(words)
     _write_csv(keep, OUT_DIR / "words.en.csv")
+
+    # Full validation dataset: ENABLE ∪ FrequencyWords (filtered)
+    full_words: dict[str, int] = {}
+    for w in enable:
+        if len(w) >= MIN_LEN and EN_RE.match(w):
+            full_words[w] = freq_map.get(w, 1)
+    for w, c in all_words:
+        if w not in full_words and c >= MIN_FREQ_FOR_UNVETTED:
+            full_words[w] = c
+    full_list = sorted(full_words.items(), key=lambda x: x[1], reverse=True)
+    print(f"[en] Full validation dataset: {len(full_list)} words")
+    _write_csv(full_list, OUT_DIR / "words.en.full.csv")
 
 
 # --- Russian ---
@@ -148,6 +164,8 @@ def build_russian(skip_ozhegov: bool = False) -> None:
         print(f"[ru] Parsed {len(words)} valid words (no Ozhegov filter)")
         keep = _apply_cumulative_cutoff(words)
         _write_csv(keep, OUT_DIR / "words.ru.csv")
+        # Full dataset same as spawn when no Ozhegov
+        _write_csv(words, OUT_DIR / "words.ru.full.csv")
         return
 
     # Primary source: Ozhegov dictionary
@@ -161,7 +179,7 @@ def build_russian(skip_ozhegov: bool = False) -> None:
     # Frequency data for scoring
     freq_map = _load_freq_ru()
 
-    # Build word list: all Ozhegov words with MIN_LEN+, scored by frequency
+    # Spawn dataset: Ozhegov words with frequency
     DEFAULT_FREQ = 1  # rare/unscored words get minimum frequency (highest score)
     words: list[tuple[str, int]] = []
     for word in sorted(ozhegov_words):
@@ -171,6 +189,18 @@ def build_russian(skip_ozhegov: bool = False) -> None:
     print(f"[ru] {len(words)} Ozhegov words (>={MIN_LEN} chars), "
           f"{sum(1 for _, f in words if f > DEFAULT_FREQ)} with frequency data")
     _write_csv(words, OUT_DIR / "words.ru.csv")
+
+    # Full validation dataset: Ozhegov ∪ FrequencyWords (filtered)
+    full_words: dict[str, int] = {}
+    for w in ozhegov_words:
+        if len(w) >= MIN_LEN:
+            full_words[w] = freq_map.get(w, DEFAULT_FREQ)
+    for w, c in freq_map.items():
+        if w not in full_words and len(w) >= MIN_LEN and RU_RE.match(w) and c >= MIN_FREQ_FOR_UNVETTED:
+            full_words[w] = c
+    full_list = sorted(full_words.items(), key=lambda x: x[1], reverse=True)
+    print(f"[ru] Full validation dataset: {len(full_list)} words")
+    _write_csv(full_list, OUT_DIR / "words.ru.full.csv")
 
 
 if __name__ == "__main__":
