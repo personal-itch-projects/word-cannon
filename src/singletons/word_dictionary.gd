@@ -241,7 +241,7 @@ func can_form_word_with_additions(letters: Array[String]) -> bool:
 	# Check if ANY dictionary word contains the current letters as a subset
 	# (i.e. the player could add more letters to eventually form a word)
 	var flock_counts := _count_letters("".join(letters).to_lower())
-	for word in word_table:
+	for word in _spawn_words:
 		if word.length() < letters.size():
 			continue
 		if _is_multiset_subset(flock_counts, letter_count_table[word]):
@@ -292,7 +292,7 @@ func find_completion_letters(flock_letters: Array) -> Dictionary:
 		var ch: String = l.to_lower()
 		flock_counts[ch] = flock_counts.get(ch, 0) + 1
 	var letter_scores: Dictionary = {}
-	for word in word_table:
+	for word in _spawn_words:
 		if word.length() < flock_letters.size():
 			continue
 		var word_counts: Dictionary = letter_count_table[word]
