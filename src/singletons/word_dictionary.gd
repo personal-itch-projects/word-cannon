@@ -21,15 +21,17 @@ const RUSSIAN_LETTER_FREQ: Dictionary = {
 	"ф": 0.26, "ъ": 0.04, "ё": 0.04,
 }
 
-var word_table: Dictionary = {}      # word -> frequency (exact match)
-var letter_count_table: Dictionary = {} # word -> {letter -> count}
+var word_table: Dictionary = {}      # word -> frequency (full dataset)
+var letter_count_table: Dictionary = {} # word -> {letter -> count} (spawn only)
 var language: String = "en"           # "en" or "ru"
 var letter_weights: Dictionary = {}   # letter -> float weight
 var _weight_total: float = 0.0
 var _alphabet: String = ""
 var _spawn_words: Array = []         # spawn-only words sorted by frequency descending
+var _anagram_map: Dictionary = {}    # sorted_key -> [word, ...] (full dataset)
 
 # Trie: each node is { "c": { char -> node }, "w": "" or word_string }
+# Built from spawn words only for prefix operations
 var _trie_root: Dictionary = {}
 
 # DFS state for find_longest_word
@@ -52,22 +54,23 @@ func load_dictionary(lang: String) -> void:
 	letter_count_table.clear()
 	_trie_root = {"c": {}, "w": ""}
 	_spawn_words.clear()
+	_anagram_map.clear()
 
-	# Load full validation dataset (merged), fallback to spawn file
+	# Load full validation dataset into word_table + anagram map (fast, no trie)
 	var full_path := "res://assets/data/words.%s.full.csv" % lang
 	var spawn_path := "res://assets/data/words.%s.csv" % lang
 	if FileAccess.file_exists(full_path):
-		_load_word_file(full_path, lang)
+		_load_validation_words(full_path, lang)
 	else:
-		_load_word_file(spawn_path, lang)
+		_load_validation_words(spawn_path, lang)
 
-	# Load spawn word list (subset used for flock word picking)
+	# Load spawn words into trie + letter_count_table + _spawn_words
 	_load_spawn_words(spawn_path, lang)
 
 	_compute_letter_weights()
 	language_changed.emit(lang)
 
-func _load_word_file(path: String, lang: String) -> void:
+func _load_validation_words(path: String, lang: String) -> void:
 	var check_fn: Callable = _is_alpha if lang == "en" else _is_cyrillic
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
@@ -88,8 +91,10 @@ func _load_word_file(path: String, lang: String) -> void:
 		if not check_fn.call(word):
 			continue
 		word_table[word] = freq
-		letter_count_table[word] = _count_letters(word)
-		_trie_insert(word)
+		var sorted_key := _sort_letters(word)
+		if not _anagram_map.has(sorted_key):
+			_anagram_map[sorted_key] = []
+		_anagram_map[sorted_key].append(word)
 
 func _load_spawn_words(path: String, lang: String) -> void:
 	var check_fn: Callable = _is_alpha if lang == "en" else _is_cyrillic
@@ -111,6 +116,8 @@ func _load_spawn_words(path: String, lang: String) -> void:
 		if not check_fn.call(word):
 			continue
 		_spawn_words.append(word)
+		_trie_insert(word)
+		letter_count_table[word] = _count_letters(word)
 	_spawn_words.sort_custom(func(a: String, b: String) -> bool:
 		return word_table.get(a, 0) > word_table.get(b, 0)
 	)
@@ -127,19 +134,34 @@ func _trie_insert(word: String) -> void:
 func find_exact_word(letters: Array[String]) -> Dictionary:
 	if letters.size() < MIN_WORD_LENGTH:
 		return {}
-	var budget: Dictionary = {}
-	for l in letters:
-		var ch := l.to_lower()
-		budget[ch] = budget.get(ch, 0) + 1
-	_best_word = ""
-	_best_freq = 0
-	_weight_sum = 0.0
-	_trie_dfs_exact(_trie_root, budget, 0, letters.size())
-	if _best_word.is_empty():
+	var sorted_key := _sort_letters("".join(letters).to_lower())
+	if not _anagram_map.has(sorted_key):
 		return {}
-	return {"word": _best_word, "frequency": _best_freq}
+	var candidates: Array = _anagram_map[sorted_key]
+	# Frequency-weighted random selection
+	var total_weight := 0.0
+	for word in candidates:
+		total_weight += float(word_table.get(word, 1))
+	var roll := randf() * total_weight
+	var acc := 0.0
+	for word in candidates:
+		var freq: int = word_table.get(word, 1)
+		acc += float(freq)
+		if roll <= acc:
+			return {"word": word, "frequency": freq}
+	var last_word: String = candidates[candidates.size() - 1]
+	return {"word": last_word, "frequency": word_table.get(last_word, 1)}
+
+func _sort_letters(word: String) -> String:
+	var chars: Array = []
+	for i in word.length():
+		chars.append(word[i])
+	chars.sort()
+	return "".join(chars)
 
 func _trie_dfs_exact(node: Dictionary, budget: Dictionary, depth: int, target_len: int) -> void:
+	# Kept for compatibility but no longer used by find_exact_word
+	if depth == target_len:
 	if depth == target_len:
 		if not node["w"].is_empty():
 			var freq: int = word_table[node["w"]]
@@ -364,7 +386,7 @@ func _compute_letter_weights() -> void:
 	var freq_table: Dictionary = ENGLISH_LETTER_FREQ if language == "en" else RUSSIAN_LETTER_FREQ
 	# Collect letters that actually appear in loaded dictionary words
 	var dict_letters: Dictionary = {}
-	for word in word_table:
+	for word in _spawn_words:
 		for i in word.length():
 			dict_letters[word[i]] = true
 	# Assign corpus-based weights, filtered to dictionary letters only
