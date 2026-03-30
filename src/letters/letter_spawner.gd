@@ -25,93 +25,64 @@ func _process(delta: float) -> void:
 	spawn_timer += delta
 	if spawn_timer >= next_interval:
 		spawn_timer = 0.0
-		_spawn_letter()
+		_spawn_word()
 		_randomize_interval()
 
-func _spawn_letter() -> void:
+func _spawn_word() -> void:
 	var cfg: Dictionary = GameManager.get_level_config()
-	var roll := randi() % 100
-	var t1: int = cfg.get("theme_1_pct", 0)
-	var t2: int = cfg.get("theme_2_pct", 0)
-	var t3: int = cfg.get("theme_3_pct", 0)
+	var difficulty: float = cfg["word_difficulty"]
+	var min_len: int = cfg["min_word_length"]
+	var max_len: int = cfg["max_word_length"]
+	var min_gaps: int = cfg["min_gaps"]
+	var max_gaps: int = cfg["max_gaps"]
 
-	if roll < t1:
-		if _spawn_word_flock(1):
-			return
-	elif roll < t1 + t2:
-		if _spawn_word_flock(2):
-			return
-	elif roll < t1 + t2 + t3:
-		if _spawn_word_flock(3):
-			return
-	# Fallback: random single letter
-	_spawn_single_letter()
+	var gap_count := randi_range(min_gaps, max_gaps)
+	var word_data: Dictionary = WordDictionary.pick_word_by_difficulty(difficulty, min_len, max_len)
+	if word_data.is_empty():
+		return
 
-func _spawn_word_flock(gaps: int) -> bool:
-	if GameManager.themed_levels_enabled:
-		return _spawn_theme_word(gaps)
-	return _spawn_random_word(gaps)
+	var word: String = word_data["word"]
+	# Clamp gaps so we don't remove more letters than possible
+	gap_count = mini(gap_count, word.length() - WordDictionary.MIN_WORD_LENGTH)
+	if gap_count < 1:
+		gap_count = 1
 
-func _spawn_theme_word(gaps: int) -> bool:
-	var min_len := gaps + WordDictionary.MIN_WORD_LENGTH
-	var word := GameManager.pick_theme_word(min_len)
-	if word.is_empty():
-		return false
-	var kept_letters := WordDictionary.pick_theme_partial_word(word, gaps)
-	if kept_letters.is_empty():
-		return false
-	return _create_word_flock(kept_letters, word)
+	var partial: Dictionary = WordDictionary.create_partial_word(word, gap_count)
+	if partial.is_empty():
+		return
 
-func _spawn_random_word(gaps: int) -> bool:
-	var kept_letters := WordDictionary.pick_partial_word(gaps)
-	if kept_letters.is_empty():
-		return false
-	return _create_word_flock(kept_letters)
+	var kept_letters: Array[String] = partial["kept_letters"] as Array[String]
+	var slot_indices_arr: Array[int] = partial["slot_indices"] as Array[int]
 
-func _create_word_flock(kept_letters: Array[String], target_word: String = "") -> bool:
-	var x_pos := _find_free_x_position(kept_letters.size())
-	if x_pos < 0:
-		return false
-	var FallingLetterScript := preload("res://src/letters/falling_letter.gd")
-	var letter_nodes: Array[Node2D] = []
-	for letter_char in kept_letters:
-		var letter_node := Node2D.new()
-		letter_node.set_script(FallingLetterScript)
-		letter_node.setup(letter_char, Vector2.ZERO)
-		letter_nodes.append(letter_node)
-	var flock: Node2D = flock_manager.create_flock(letter_nodes, Vector2(x_pos, -30))
-	if OS.is_debug_build() and not target_word.is_empty():
-		var upper_word := target_word.to_upper()
-		var missing: Array[String] = []
-		var kept_upper: Array[String] = []
-		for k in kept_letters:
-			kept_upper.append(k.to_upper())
-		for c_idx in upper_word.length():
-			var ch: String = upper_word[c_idx]
-			var found := kept_upper.find(ch)
-			if found >= 0:
-				kept_upper.remove_at(found)
-			else:
-				missing.append(ch)
-		flock.set_debug_info(upper_word, missing)
-	return true
-
-func _spawn_single_letter() -> void:
-	var x_pos := _find_free_x_position()
+	var x_pos := _find_free_x_position(word.length())
 	if x_pos < 0:
 		return
-	var FallingLetterScript := preload("res://src/letters/falling_letter.gd")
-	var letter_node := Node2D.new()
-	letter_node.set_script(FallingLetterScript)
-	var allowed: String = GameManager.get_allowed_letters()
-	var rand_letter := WordDictionary.pick_weighted_letter(allowed)
-	letter_node.setup(rand_letter, Vector2.ZERO)
-	flock_manager.create_flock([letter_node] as Array[Node2D], Vector2(x_pos, -30))
 
-func _find_free_x_position(letter_count: int = 1) -> float:
+	var FallingLetterScript := preload("res://src/letters/falling_letter.gd")
+	var letter_nodes: Array[Node2D] = []
+	for i in kept_letters.size():
+		var letter_node := Node2D.new()
+		letter_node.set_script(FallingLetterScript)
+		letter_node.setup(kept_letters[i], Vector2.ZERO)
+		letter_node.slot_index = slot_indices_arr[i]
+		letter_nodes.append(letter_node)
+
+	var flock: Node2D = flock_manager.create_flock(letter_nodes, Vector2(x_pos, -30), word, slot_indices_arr)
+
+	if OS.is_debug_build():
+		var upper_word := word.to_upper()
+		var missing: Array[String] = []
+		var filled: Dictionary = {}
+		for si in slot_indices_arr:
+			filled[si] = true
+		for ci in upper_word.length():
+			if not filled.has(ci):
+				missing.append(upper_word[ci])
+		flock.set_debug_info(upper_word, missing)
+
+func _find_free_x_position(word_length: int = 1) -> float:
 	const MAX_ATTEMPTS := 10
-	const BUBBLE_DIAMETER := 104.0  # (FLOAT_RADIUS + 22) * 2
-	var word_extent := BUBBLE_DIAMETER
+	var word_extent := (word_length - 1) * 22.0 + 40.0 + 40.0  # HOME_SPACING + padding
 	var bounds := GameManager.get_play_bounds()
 	var left_bound := bounds.x + 40.0
 	var right_bound := bounds.y - 40.0 - word_extent

@@ -5,6 +5,7 @@ const COLLISION_RADIUS := 12.0
 
 var velocity: Vector2 = Vector2.ZERO
 var letter: String = ""
+var slot_index: int = -1
 var font: Font
 var font_size: int = 20
 

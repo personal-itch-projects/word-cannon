@@ -2,15 +2,13 @@ extends Node2D
 
 const PUSH_DRAG := 2.5
 
-# Boid parameters
-const SEPARATION_RADIUS := 26.0
-const SEPARATION_STRENGTH := 120.0
-const COHESION_STRENGTH := 40.0
-const BOUNDARY_STRENGTH := 200.0
-const DRIFT_STRENGTH := 15.0
+# Spring-to-home parameters
+const SPRING_STRENGTH := 180.0
+const DRIFT_STRENGTH := 8.0
 const MAX_SPEED := 60.0
-const DAMPING := 0.97
+const DAMPING := 0.93
 const COLLISION_DIAMETER := 24.0  # 2 * falling_letter.COLLISION_RADIUS
+const HOME_SPACING := 22.0
 
 # Bubble sizing
 const BASE_BUBBLE_RADIUS := 20.0
@@ -35,12 +33,20 @@ var _popping: bool = false
 var is_intro_flock: bool = false
 var _debug_label: Label = null
 
+# Word-ordered positioning
+var target_word: String = ""
+var slot_indices: Array[int] = []   # word position of each letter
+
 var _bubble_sprite: Sprite2D
 var _bubble_material: ShaderMaterial
 
 func _ready() -> void:
 	velocity = Vector2(0, GameManager.get_level_config()["fall_speed"])
 	_setup_bubble_visual()
+
+func setup_word(word: String, slots: Array[int]) -> void:
+	target_word = word
+	slot_indices = slots
 
 func set_debug_info(word: String, missing: Array[String]) -> void:
 	if not OS.is_debug_build():
@@ -55,8 +61,6 @@ func set_debug_info(word: String, missing: Array[String]) -> void:
 	add_child(_debug_label)
 
 func _setup_bubble_visual() -> void:
-	# Sprite2D with analytical metaball shader - computes the field per-pixel
-	# from letter positions passed as uniforms.
 	var img := Image.create(2, 2, false, Image.FORMAT_RGBA8)
 	img.fill(Color.WHITE)
 	var tex := ImageTexture.create_from_image(img)
@@ -70,7 +74,6 @@ func _setup_bubble_visual() -> void:
 	_bubble_material.shader = shader
 	_bubble_material.set_shader_parameter("ball_radius", METABALL_RADIUS)
 
-	# Gradient texture: edge glow -> fill -> deep interior
 	var gradient := Gradient.new()
 	gradient.offsets = PackedFloat32Array([0.0, 0.15, 0.5, 1.0])
 	gradient.colors = PackedColorArray([
@@ -87,7 +90,6 @@ func _setup_bubble_visual() -> void:
 	_bubble_material.set_shader_parameter("caustic_speed", 0.4)
 
 	_bubble_sprite.material = _bubble_material
-
 	_bubble_sprite.z_index = 1
 	_bubble_sprite.z_as_relative = false
 	add_child(_bubble_sprite)
@@ -99,6 +101,24 @@ func add_letter(letter_node: Node2D, entry_velocity: Vector2 = Vector2.ZERO) -> 
 	_init_letter_float(letter_node, entry_velocity)
 	_update_possible_words()
 	move_child(_bubble_sprite, -1)
+
+func _get_home_position(slot_idx: int) -> Vector2:
+	if target_word.is_empty():
+		return Vector2.ZERO
+	var total_width := (target_word.length() - 1) * HOME_SPACING
+	return Vector2(slot_idx * HOME_SPACING - total_width / 2.0, 0.0)
+
+func get_missing_slots() -> Array[int]:
+	## Returns unfilled word positions
+	var filled: Dictionary = {}
+	for l in letters:
+		if l.slot_index >= 0:
+			filled[l.slot_index] = true
+	var missing: Array[int] = []
+	for i in target_word.length():
+		if not filled.has(i):
+			missing.append(i)
+	return missing
 
 func _init_letter_float(letter_node: Node2D, entry_velocity: Vector2 = Vector2.ZERO) -> void:
 	var vel: Vector2
@@ -153,14 +173,12 @@ func pop() -> void:
 	velocity = Vector2.ZERO
 	push_velocity = Vector2.ZERO
 
-	# Scatter letters outward
 	for i in letters.size():
 		var dir: Vector2 = letters[i].position.normalized()
 		if dir.length_squared() < 0.01:
 			dir = Vector2(randf() - 0.5, randf() - 0.5).normalized()
 		_letter_float_data[i]["velocity"] = dir * randf_range(150.0, 300.0)
 
-	# Tween: scale up bubble + fade everything out
 	var tween := create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(_bubble_sprite, "modulate:a", 0.0, 0.3).set_ease(Tween.EASE_OUT)
@@ -179,7 +197,6 @@ func pop_word(word: String, hold_time: float = 0.0, fade_time: float = 1.3) -> v
 
 	var upper_word := word.to_upper()
 
-	# Match letter nodes to word characters (greedy multiset match)
 	var matched_indices: Array[int] = []
 	var used: Array[bool] = []
 	used.resize(letters.size())
@@ -192,7 +209,6 @@ func pop_word(word: String, hold_time: float = 0.0, fade_time: float = 1.3) -> v
 				used[li] = true
 				break
 
-	# Compute word-layout target positions centered at origin
 	var char_width := 18.0
 	var total_width := upper_word.length() * char_width
 	var start_x := -total_width / 2.0 + char_width / 2.0
@@ -200,21 +216,17 @@ func pop_word(word: String, hold_time: float = 0.0, fade_time: float = 1.3) -> v
 	for ci in upper_word.length():
 		target_positions.append(Vector2(start_x + ci * char_width, 0.0))
 
-	# Tween matched letters to word positions
 	var tween := create_tween()
 	tween.set_parallel(true)
 
-	# Fade bubble out quickly
 	tween.tween_property(_bubble_sprite, "modulate:a", 0.0, 0.25).set_ease(Tween.EASE_OUT)
 
-	# Move matched letters to word positions
 	for mi in matched_indices.size():
 		var li: int = matched_indices[mi]
 		_letter_float_data[li]["velocity"] = Vector2.ZERO
 		tween.tween_property(letters[li], "position", target_positions[mi], 0.3)\
 			.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 
-	# Scatter unmatched letters outward + fade them
 	for li in letters.size():
 		if not used[li]:
 			var dir: Vector2 = letters[li].position.normalized()
@@ -223,7 +235,6 @@ func pop_word(word: String, hold_time: float = 0.0, fade_time: float = 1.3) -> v
 			_letter_float_data[li]["velocity"] = dir * randf_range(150.0, 300.0)
 			tween.tween_property(letters[li], "modulate:a", 0.0, 0.3)
 
-	# Fade whole flock after hold period
 	tween.tween_property(self, "modulate:a", 0.0, fade_time).set_ease(Tween.EASE_IN).set_delay(0.3 + hold_time)
 
 	tween.chain().tween_callback(func():
@@ -233,7 +244,6 @@ func pop_word(word: String, hold_time: float = 0.0, fade_time: float = 1.3) -> v
 
 func _process(delta: float) -> void:
 	if _popping:
-		# During pop: just scatter letters outward, no boid forces
 		for i in letters.size():
 			var vel: Vector2 = _letter_float_data[i]["velocity"]
 			vel *= 0.96
@@ -267,7 +277,6 @@ func _process(delta: float) -> void:
 	if _dent_strength > 0.0:
 		_dent_strength = move_toward(_dent_strength, 0.0, DENT_DECAY * _dent_strength * delta + delta)
 
-	var bubble_r := _get_bubble_radius()
 	var time := Time.get_ticks_msec() / 1000.0
 	var count := letters.size()
 
@@ -276,29 +285,23 @@ func _process(delta: float) -> void:
 		var vel: Vector2 = data["velocity"]
 		var pos: Vector2 = letters[i].position
 
-		# Separation: push away from nearby letters
-		var separation := Vector2.ZERO
-		for j in count:
-			if j == i:
-				continue
-			var diff: Vector2 = pos - letters[j].position
-			var dist := diff.length()
-			if dist < SEPARATION_RADIUS and dist > 0.1:
-				separation += diff.normalized() * (1.0 - dist / SEPARATION_RADIUS)
-		vel += separation * SEPARATION_STRENGTH * delta
+		# Spring-to-home: pull toward word-ordered position
+		if not target_word.is_empty() and letters[i].slot_index >= 0:
+			var home := _get_home_position(letters[i].slot_index)
+			vel += (home - pos) * SPRING_STRENGTH * delta
+		else:
+			# No slot: gentle cohesion toward center
+			var to_center := -pos
+			var center_dist := to_center.length()
+			if center_dist > 1.0:
+				vel += to_center.normalized() * 40.0 * delta
+			# Soft boundary
+			var bubble_r := _get_bubble_radius()
+			if center_dist > bubble_r * 0.6:
+				var overshoot := (center_dist - bubble_r * 0.6) / (bubble_r * 0.4)
+				vel += to_center.normalized() * 200.0 * overshoot * delta
 
-		# Cohesion: gentle pull toward center
-		var to_center := -pos
-		var center_dist := to_center.length()
-		if center_dist > 1.0:
-			vel += to_center.normalized() * COHESION_STRENGTH * delta
-
-		# Soft boundary: stronger push when near or past bubble edge
-		if center_dist > bubble_r * 0.6:
-			var overshoot := (center_dist - bubble_r * 0.6) / (bubble_r * 0.4)
-			vel += to_center.normalized() * BOUNDARY_STRENGTH * overshoot * delta
-
-		# Gentle drift: slow-changing random perturbation
+		# Gentle drift perturbation
 		var drift_angle: float = data["drift_angle"] + time * data["drift_speed"]
 		vel += Vector2(cos(drift_angle), sin(drift_angle)) * DRIFT_STRENGTH * delta
 
@@ -310,7 +313,7 @@ func _process(delta: float) -> void:
 		data["velocity"] = vel
 		letters[i].position = pos + vel * delta
 
-	# Hard collision resolution: push overlapping letters apart
+	# Hard collision resolution
 	_resolve_collisions()
 
 	# Update metaball shader uniforms
@@ -337,7 +340,6 @@ func _update_bubble_uniforms() -> void:
 	if not _bubble_material:
 		return
 	var r := _get_bubble_radius() + BUBBLE_PADDING
-	# Scale sprite to cover the bubble area: 2x2 texture -> scale by r
 	_bubble_sprite.scale = Vector2(r, r)
 	var rect_size := Vector2(r * 2.0, r * 2.0)
 	_bubble_material.set_shader_parameter("rect_size", rect_size)
@@ -353,7 +355,8 @@ func _update_bubble_uniforms() -> void:
 	_bubble_material.set_shader_parameter("dent_radius", DENT_RADIUS)
 
 func _get_bubble_radius() -> float:
-	return BASE_BUBBLE_RADIUS + RADIUS_PER_LETTER * maxf(letters.size() - 1, 0)
+	var count: int = target_word.length() if not target_word.is_empty() else letters.size()
+	return BASE_BUBBLE_RADIUS + RADIUS_PER_LETTER * maxf(count - 1, 0)
 
 func get_bounding_rect() -> Rect2:
 	var r := _get_bubble_radius()

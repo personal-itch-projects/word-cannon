@@ -13,17 +13,11 @@ var _border_right: Sprite2D
 @onready var settings_menu: Control = $UILayer/SettingsMenu
 @onready var defeat_screen: Control = $UILayer/DefeatScreen
 @onready var pause_menu: Control = $UILayer/PauseMenu
-@onready var stage_complete_screen: Control = $UILayer/StageCompleteScreen
-
-var _theme_intro: RefCounted
 
 func _ready() -> void:
 	_resize_background()
 	get_viewport().size_changed.connect(_resize_background)
 	_setup_borders()
-	var ThemeIntro := preload("res://src/game_scene/theme_intro.gd")
-	_theme_intro = ThemeIntro.new()
-	_theme_intro.setup(get_tree(), flock_manager, platform, hud, letter_spawner)
 	GameManager.state_changed.connect(_on_state_changed)
 	_on_state_changed(GameManager.current_state)
 
@@ -75,7 +69,6 @@ func _on_state_changed(new_state: GameState.State) -> void:
 	settings_menu.visible = false
 	defeat_screen.visible = false
 	pause_menu.visible = false
-	stage_complete_screen.visible = false
 	hud.visible = false
 	platform.visible = false
 	letter_spawner.set_process(false)
@@ -97,7 +90,7 @@ func _on_state_changed(new_state: GameState.State) -> void:
 			else:
 				_clear_gameplay()
 				menu_letter_spawner.clear_letters()
-				_theme_intro.run()
+				letter_spawner.start_spawning()
 		GameState.State.SETTINGS:
 			settings_menu.visible = true
 		GameState.State.DEFEAT:
@@ -108,16 +101,11 @@ func _on_state_changed(new_state: GameState.State) -> void:
 			pause_menu.visible = true
 			hud.visible = true
 			SfxManager.play(SfxManager.sfx_pause_opened)
-		GameState.State.STAGE_COMPLETE:
-			stage_complete_screen.visible = true
-			hud.visible = true
-			letter_spawner.set_process(false)
 
 	if new_state != GameState.State.PLAYING:
 		SfxManager.stop_cannon_move()
 
 func _clear_gameplay() -> void:
-	_theme_intro.cancel()
 	flock_manager.clear_all()
 	letter_spawner.stop_spawning()
 	platform.reset()

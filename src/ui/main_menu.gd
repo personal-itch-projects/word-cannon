@@ -57,7 +57,6 @@ func _unhandled_input(event: InputEvent) -> void:
 func _set_language(lang: String) -> void:
 	GameManager.language = lang
 	WordDictionary.load_dictionary(lang)
-	GameManager.load_themes()
 	play_bubble.rebuild(GameManager.tr_text("PLAY"))
 	settings_bubble.rebuild(GameManager.tr_text("SETTINGS"))
 	queue_redraw()

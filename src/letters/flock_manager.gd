@@ -52,12 +52,14 @@ func is_click_on_flock(click_pos: Vector2) -> bool:
 			return true
 	return false
 
-func create_flock(letter_nodes: Array[Node2D], spawn_pos: Vector2) -> Node2D:
+func create_flock(letter_nodes: Array[Node2D], spawn_pos: Vector2, p_target_word: String = "", p_slot_indices: Array[int] = []) -> Node2D:
 	var flock_scene := preload("res://src/letters/flock.gd")
 	var flock := Node2D.new()
 	flock.set_script(flock_scene)
 	flock.position = spawn_pos
 	add_child(flock)
+	if not p_target_word.is_empty():
+		flock.setup_word(p_target_word, p_slot_indices)
 	for letter_node in letter_nodes:
 		flock.add_letter(letter_node)
 	flocks.append(flock)
@@ -92,6 +94,17 @@ func add_letter_to_flock(flock: Node2D, letter_char: String, from_pos: Vector2, 
 	new_letter.set_script(FallingLetterScript)
 	new_letter.letter = letter_char
 	new_letter.velocity = Vector2.ZERO
+
+	# Check if this letter matches a missing slot in the target word
+	if not flock.target_word.is_empty():
+		var missing: Array[int] = flock.get_missing_slots()
+		var upper_char: String = letter_char.to_upper()
+		var upper_word: String = flock.target_word.to_upper()
+		for slot_idx in missing:
+			if slot_idx < upper_word.length() and upper_word[slot_idx] == upper_char:
+				new_letter.slot_index = slot_idx
+				break
+
 	# Place letter at entry point (local to flock) and give it projectile velocity
 	var entry_local: Vector2 = from_pos - flock.global_position
 	new_letter.position = entry_local

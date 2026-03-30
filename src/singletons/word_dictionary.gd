@@ -27,6 +27,7 @@ var language: String = "en"           # "en" or "ru"
 var letter_weights: Dictionary = {}   # letter -> float weight
 var _weight_total: float = 0.0
 var _alphabet: String = ""
+var _sorted_words: Array = []        # words sorted by frequency descending
 
 # Trie: each node is { "c": { char -> node }, "w": "" or word_string }
 var _trie_root: Dictionary = {}
@@ -74,7 +75,16 @@ func load_dictionary(lang: String) -> void:
 		letter_count_table[word] = _count_letters(word)
 		_trie_insert(word)
 	_compute_letter_weights()
+	_build_sorted_words()
 	language_changed.emit(lang)
+
+func _build_sorted_words() -> void:
+	_sorted_words.clear()
+	for word in word_table:
+		_sorted_words.append(word)
+	_sorted_words.sort_custom(func(a: String, b: String) -> bool:
+		return word_table[a] > word_table[b]
+	)
 
 func _trie_insert(word: String) -> void:
 	var node := _trie_root
@@ -320,47 +330,45 @@ func _compute_letter_weights() -> void:
 	chars.sort()
 	_alphabet = "".join(chars).to_upper()
 
-func pick_theme_partial_word(word: String, gaps: int) -> Array[String]:
-	## Given a specific word, remove `gaps` random letter positions and return kept letters (uppercase).
-	if word.length() < gaps + MIN_WORD_LENGTH:
-		return []
-	var all_indices: Array = []
-	for i in word.length():
-		all_indices.append(i)
-	all_indices.shuffle()
-	var remove_indices: Array = all_indices.slice(0, gaps)
-	var kept: Array[String] = []
-	for i in word.length():
-		if not remove_indices.has(i):
-			kept.append(word[i].to_upper())
-	return kept
-
-func pick_partial_word(gaps: int) -> Array[String]:
-	var min_len := gaps + MIN_WORD_LENGTH
+func pick_word_by_difficulty(difficulty: float, min_len: int, max_len: int) -> Dictionary:
+	## Pick a word based on difficulty (0.0 = common, 1.0 = rare).
+	## Returns {word: String, frequency: int} or empty dict.
 	var candidates: Array = []
-	var total_weight := 0.0
-	for word in word_table:
-		if word.length() >= min_len:
-			var w := log(maxf(float(word_table[word]), 1.0)) + 1.0
-			candidates.append({"word": word, "weight": w})
-			total_weight += w
+	for word in _sorted_words:
+		if word.length() >= min_len and word.length() <= max_len:
+			candidates.append(word)
 	if candidates.is_empty():
-		return []
+		return {}
+	var pool_size := maxi(200, int(candidates.size() * (0.1 + 0.9 * difficulty)))
+	pool_size = mini(pool_size, candidates.size())
+	# Weighted random within pool (favors more frequent)
+	var total_weight := 0.0
+	for i in pool_size:
+		total_weight += log(maxf(float(word_table[candidates[i]]), 1.0)) + 1.0
 	var roll := randf() * total_weight
 	var acc := 0.0
-	var chosen_word: String = candidates[0]["word"]
-	for c in candidates:
-		acc += c["weight"]
+	for i in pool_size:
+		acc += log(maxf(float(word_table[candidates[i]]), 1.0)) + 1.0
 		if roll <= acc:
-			chosen_word = c["word"]
-			break
+			return {"word": candidates[i], "frequency": word_table[candidates[i]]}
+	return {"word": candidates[0], "frequency": word_table[candidates[0]]}
+
+func create_partial_word(word: String, gap_count: int) -> Dictionary:
+	## Remove gap_count random positions from word, preserving order of remaining letters.
+	## Returns {kept_letters: Array[String], slot_indices: Array[int], target_word: String}
+	if word.length() < gap_count + MIN_WORD_LENGTH:
+		return {}
 	var all_indices: Array = []
-	for i in chosen_word.length():
+	for i in word.length():
 		all_indices.append(i)
 	all_indices.shuffle()
-	var remove_indices: Array = all_indices.slice(0, gaps)
+	var remove_set: Dictionary = {}
+	for i in gap_count:
+		remove_set[all_indices[i]] = true
 	var kept_letters: Array[String] = []
-	for i in chosen_word.length():
-		if not remove_indices.has(i):
-			kept_letters.append(chosen_word[i].to_upper())
-	return kept_letters
+	var slot_indices: Array[int] = []
+	for i in word.length():
+		if not remove_set.has(i):
+			kept_letters.append(word[i].to_upper())
+			slot_indices.append(i)
+	return {"kept_letters": kept_letters, "slot_indices": slot_indices, "target_word": word}

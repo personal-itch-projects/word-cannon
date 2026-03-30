@@ -6,5 +6,4 @@ enum State {
 	SETTINGS,
 	DEFEAT,
 	PAUSED,
-	STAGE_COMPLETE,
 }
