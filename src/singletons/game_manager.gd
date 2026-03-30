@@ -56,9 +56,14 @@ func tr_text(key: String) -> String:
 		return _translations[key].get(language, key)
 	return key
 
+var _crosshair_texture: Resource
+var _cursor_texture: Resource
+
 func _ready() -> void:
 	get_window().min_size = MIN_WINDOW_SIZE
 	_load_high_score()
+	_crosshair_texture = load("res://assets/ui/crosshair.png")
+	_cursor_texture = _load_resized("res://assets/ui/cursor.png", 32)
 
 func get_play_bounds() -> Vector2:
 	var screen_w: float = get_viewport().get_visible_rect().size.x
@@ -97,6 +102,10 @@ func change_state(new_state: GameState.State) -> void:
 	current_state = new_state
 	if new_state == GameState.State.DEFEAT:
 		_update_high_score()
+	if new_state == GameState.State.PLAYING:
+		Input.set_custom_mouse_cursor(_crosshair_texture, Input.CURSOR_ARROW, Vector2(32, 32))
+	elif new_state != GameState.State.PAUSED and new_state != GameState.State.SETTINGS:
+		Input.set_custom_mouse_cursor(_cursor_texture, Input.CURSOR_ARROW, Vector2.ZERO)
 	if new_state == GameState.State.PAUSED:
 		get_tree().paused = true
 	elif new_state != GameState.State.SETTINGS:
@@ -183,3 +192,9 @@ func _load_high_score() -> void:
 		var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
 		if file:
 			high_score = file.get_32()
+
+func _load_resized(path: String, size: int) -> ImageTexture:
+	var img := Image.new()
+	img.load(path)
+	img.resize(size, size, Image.INTERPOLATE_LANCZOS)
+	return ImageTexture.create_from_image(img)

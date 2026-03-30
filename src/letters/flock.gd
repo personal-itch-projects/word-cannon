@@ -30,6 +30,7 @@ var _letter_float_data: Array = []
 var _dent_pos: Vector2 = Vector2.ZERO
 var _dent_strength: float = 0.0
 var _popping: bool = false
+var _hover_amount: float = 0.0
 var is_intro_flock: bool = false
 var _debug_label: Label = null
 
@@ -316,8 +317,16 @@ func _process(delta: float) -> void:
 	# Hard collision resolution
 	_resolve_collisions()
 
+	# Hover detection
+	var mouse_pos := get_viewport().get_mouse_position()
+	var hovered := not _popping and letters.size() >= WordDictionary.MIN_WORD_LENGTH and get_bounding_rect().has_point(mouse_pos)
+	if hovered:
+		_hover_amount = move_toward(_hover_amount, 1.0, 4.0 * delta)
+	else:
+		_hover_amount = move_toward(_hover_amount, 0.0, 6.0 * delta)
+
 	# Update metaball shader uniforms
-	_update_bubble_uniforms()
+	_update_bubble_uniforms(mouse_pos)
 
 func _resolve_collisions() -> void:
 	var count := letters.size()
@@ -336,7 +345,7 @@ func _resolve_collisions() -> void:
 					letters[i].position += nudge
 					letters[j].position -= nudge
 
-func _update_bubble_uniforms() -> void:
+func _update_bubble_uniforms(mouse_pos: Vector2 = Vector2.ZERO) -> void:
 	if not _bubble_material:
 		return
 	var r: float
@@ -361,6 +370,9 @@ func _update_bubble_uniforms() -> void:
 	_bubble_material.set_shader_parameter("dent_pos", _dent_pos)
 	_bubble_material.set_shader_parameter("dent_strength", _dent_strength)
 	_bubble_material.set_shader_parameter("dent_radius", DENT_RADIUS)
+	var hover_local := mouse_pos - global_position
+	_bubble_material.set_shader_parameter("hover_center", hover_local)
+	_bubble_material.set_shader_parameter("hover_amount", _hover_amount)
 
 func _get_bubble_radius() -> float:
 	var count: int = target_word.length() if not target_word.is_empty() else letters.size()

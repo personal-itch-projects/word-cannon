@@ -416,6 +416,9 @@ override.cfg
 # 3D Models - textures
 !/assets/models/**/*.png
 
+# UI assets
+!/assets/ui/**/*.png
+
 # Other
 *.exe
 /assets/secrets/secrets.csv
