@@ -17,9 +17,6 @@ var sfx_bubble_pop_word: Array[AudioStream] = [
 ]
 var sfx_cannon_move: Array[AudioStream] = [
 	preload("res://assets/sfx/cannon_move_1.wav"),
-	preload("res://assets/sfx/cannon_move_2.wav"),
-	preload("res://assets/sfx/cannon_move_3.wav"),
-	preload("res://assets/sfx/cannon_move_4.wav"),
 ]
 var sfx_bubble_fire: Array[AudioStream] = [
 	preload("res://assets/sfx/bubble_fire_1.wav"),
