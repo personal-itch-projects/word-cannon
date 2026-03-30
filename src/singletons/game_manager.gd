@@ -57,11 +57,18 @@ func tr_text(key: String) -> String:
 	return key
 
 var _crosshair_texture: Resource
+var _music_player: AudioStreamPlayer
 
 func _ready() -> void:
 	get_window().min_size = MIN_WINDOW_SIZE
 	_load_high_score()
 	_crosshair_texture = load("res://assets/ui/crosshair_32.png")
+	_music_player = AudioStreamPlayer.new()
+	_music_player.stream = load("res://assets/music/background_music.mp3")
+	_music_player.stream.loop = true
+	_music_player.volume_db = -6.0
+	_music_player.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(_music_player)
 
 func get_play_bounds() -> Vector2:
 	var screen_w: float = get_viewport().get_visible_rect().size.x
@@ -102,12 +109,18 @@ func change_state(new_state: GameState.State) -> void:
 		_update_high_score()
 	if new_state == GameState.State.PLAYING:
 		Input.set_custom_mouse_cursor(_crosshair_texture, Input.CURSOR_ARROW, Vector2(16, 16))
+		if not _music_player.playing:
+			_music_player.play()
+		_music_player.stream_paused = false
 	elif new_state != GameState.State.SETTINGS:
 		Input.set_custom_mouse_cursor(null)
 	if new_state == GameState.State.PAUSED:
 		get_tree().paused = true
+		_music_player.stream_paused = true
 	elif new_state != GameState.State.SETTINGS:
 		get_tree().paused = false
+	if new_state == GameState.State.MAIN_MENU or new_state == GameState.State.DEFEAT:
+		_music_player.stop()
 	state_changed.emit(new_state)
 
 func add_score(amount: int) -> void:
