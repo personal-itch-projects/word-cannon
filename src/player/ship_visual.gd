@@ -11,7 +11,7 @@ var _viewport: SubViewport
 var _sprite: Sprite2D
 var _camera: Camera3D
 var _ship_node: Node3D
-var _cannon_node: Node3D
+var _cannon_pivot: Node3D  # Pivot at barrel base for correct rotation
 var _ship_root: Node3D  # Root 3D node that holds ship + cannon
 var _current_facing: float = PI  # Y rotation of ship (PI = right-facing, 0 = left-facing)
 var _last_cannon_angle: float = 0.0
@@ -58,16 +58,41 @@ func _setup_viewport() -> void:
 	_ship_node.name = "Ship"
 	_ship_root.add_child(_ship_node)
 
-	# Load cannon model (mobile version with wheels)
-	var cannon_scene := load("res://assets/models/cannon-mobile.glb") as PackedScene
-	_cannon_node = cannon_scene.instantiate()
-	_cannon_node.name = "Cannon"
-	# Position cannon on the ship deck (centered so visible from side)
-	_cannon_node.position = Vector3(0, 1.0, 0.0)
-	_cannon_node.scale = Vector3(1.5, 1.5, 1.5)
-	# Pitch the cannon barrel upward
-	_cannon_node.rotation.x = -1.0
-	_ship_root.add_child(_cannon_node)
+	# Load cannon barrel from weapon-cannon (remove the base, keep barrel)
+	var cannon_scene := load("res://assets/models/weapon-cannon.glb") as PackedScene
+	var cannon_inst := cannon_scene.instantiate()
+	var base_mesh := cannon_inst.find_child("weapon-cannon", true, false)
+	var barrel: MeshInstance3D
+	if base_mesh:
+		barrel = base_mesh.find_child("barrel", true, false)
+		if barrel:
+			base_mesh.remove_child(barrel)
+	cannon_inst.queue_free()
+
+	# Apply tower defense colormap texture to barrel
+	if barrel:
+		var td_colormap := load("res://assets/models/Textures/colormap-td.png")
+		for si in barrel.mesh.get_surface_count():
+			var mat := barrel.mesh.surface_get_material(si) as StandardMaterial3D
+			if mat:
+				var new_mat := mat.duplicate() as StandardMaterial3D
+				new_mat.albedo_texture = td_colormap
+				barrel.set_surface_override_material(si, new_mat)
+
+	# Pivot node at the barrel base so rotation swings the barrel correctly
+	_cannon_pivot = Node3D.new()
+	_cannon_pivot.name = "CannonPivot"
+	_cannon_pivot.position = Vector3(0, 1.0, 0.0)
+	_cannon_pivot.scale = Vector3(7.5, 7.5, 7.5)
+	_ship_root.add_child(_cannon_pivot)
+
+	if barrel:
+		# Barrel's original position was (0, 0.383, 0) — offset it so pivot is at its base
+		barrel.position = Vector3(0, 0, 0)
+		_cannon_pivot.add_child(barrel)
+
+	# Pitch the cannon upward
+	_cannon_pivot.rotation.x = -1.0
 
 	# Scale down ship to fit viewport including mast/sail
 	_ship_root.scale = Vector3(0.25, 0.25, 0.25)
@@ -89,12 +114,11 @@ func _setup_viewport() -> void:
 	add_child(_sprite)
 
 func set_cannon_angle(angle: float) -> void:
-	if _cannon_node and not is_equal_approx(angle, _last_cannon_angle):
+	if _cannon_pivot and not is_equal_approx(angle, _last_cannon_angle):
 		_last_cannon_angle = angle
-		# From side view, cannon sweeps left/right via Z-axis rotation
-		# (tilts the barrel visually from the profile perspective)
+		# From side view, cannon sweeps left/right via Z-axis rotation on the pivot
 		var compensated := angle if _current_facing > PI * 0.5 else -angle
-		_cannon_node.rotation.z = compensated
+		_cannon_pivot.rotation.z = compensated
 		_request_update()
 
 func set_ship_direction(direction: float) -> void:
