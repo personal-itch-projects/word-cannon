@@ -61,37 +61,38 @@ func _setup_viewport() -> void:
 	var cannon_scene := load("res://assets/models/cannon-mobile.glb") as PackedScene
 	_cannon_node = cannon_scene.instantiate()
 	_cannon_node.name = "Cannon"
-	# Position cannon on the ship deck
-	_cannon_node.position = Vector3(0, 0.55, 0.3)
-	_cannon_node.scale = Vector3(1.3, 1.3, 1.3)
-	# Pitch the cannon barrel upward so it points up (matching 2D cannon direction)
-	_cannon_node.rotation.x = -0.5
+	# Position cannon on the ship deck (visible from front)
+	_cannon_node.position = Vector3(0, 0.6, 0.0)
+	_cannon_node.scale = Vector3(1.2, 1.2, 1.2)
+	# Pitch the cannon barrel upward so it points up
+	_cannon_node.rotation.x = -0.8
 	_ship_root.add_child(_cannon_node)
 
-	# Camera: slightly above and to the side for a 3/4 view
+	# Scale down ship to fit viewport
+	_ship_root.scale = Vector3(0.6, 0.6, 0.6)
+
+	# Camera: front view (анфас) - looking straight at the ship from the front
 	_camera = Camera3D.new()
 	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	_camera.size = 3.5
-	_camera.position = Vector3(0, 4.0, 3.0)
-	_camera.rotation_degrees = Vector3(-50, 0, 0)
+	_camera.size = 2.5
+	_camera.position = Vector3(0, 0.8, 5.0)
+	_camera.rotation_degrees = Vector3(0, 0, 0)
 	_viewport.add_child(_camera)
 
 	# Sprite2D to display the viewport texture
 	_sprite = Sprite2D.new()
 	_sprite.texture = _viewport.get_texture()
 	# Scale and position so ship appears correctly at platform position
-	_sprite.scale = Vector2(0.65, 0.65)
-	_sprite.position = Vector2(0, -20)
+	_sprite.scale = Vector2(0.7, 0.7)
+	_sprite.position = Vector2(0, -10)
 	add_child(_sprite)
 
 func set_cannon_angle(angle: float) -> void:
 	if _cannon_node and not is_equal_approx(angle, _last_cannon_angle):
 		_last_cannon_angle = angle
-		# 2D cannon_angle: 0 = up, positive = right, negative = left
-		# In 3D with camera looking from behind+above, Y-axis rotation sweeps left/right
-		# When ship is flipped (facing left), negate to compensate for parent rotation
+		# From front view, cannon sweeps left/right via Z-axis rotation
 		var compensated := angle if _current_facing < PI * 0.5 else -angle
-		_cannon_node.rotation.y = -compensated
+		_cannon_node.rotation.z = -compensated
 		_request_update()
 
 func set_ship_direction(direction: float) -> void:
