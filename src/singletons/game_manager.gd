@@ -33,7 +33,7 @@ var is_resuming: bool = false
 var _level_elapsed: float = 0.0
 
 var _translations: Dictionary = {
-	"MORE WORDS": {"en": "MORE WORDS", "ru": "МОРЕ СЛОВ"},
+	"WORD PLUNDER": {"en": "WORD PLUNDER", "ru": "МОРЕ СЛОВ"},
 	"PLAY": {"en": "PLAY", "ru": "ИГРАТЬ"},
 	"SETTINGS": {"en": "SETTINGS", "ru": "НАСТРОЙКИ"},
 	"BACK": {"en": "BACK", "ru": "НАЗАД"},

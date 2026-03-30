@@ -67,7 +67,7 @@ func _draw() -> void:
 	_draw_lang_button(ru_rect, "RU", GameManager.language == "ru", hover_ru)
 
 	# Title
-	var title_text := GameManager.tr_text("MORE WORDS")
+	var title_text := GameManager.tr_text("WORD PLUNDER")
 	var title_size := font_bold.get_string_size(title_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 52)
 	draw_string(font_bold, Vector2(screen_size.x / 2.0 - title_size.x / 2.0, screen_size.y / 2.0 - 100), title_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 52, Color("#1A1A1A"))
 
