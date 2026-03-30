@@ -259,7 +259,7 @@ func _process(delta: float) -> void:
 
 	# Apply push with drag
 	push_velocity = push_velocity.move_toward(Vector2.ZERO, PUSH_DRAG * push_velocity.length() * delta)
-	position += (velocity + push_velocity) * delta
+	position += (velocity * GameManager.speed_multiplier + push_velocity) * delta
 
 	# Bounce off play area borders
 	var bounds := GameManager.get_play_bounds()
@@ -339,7 +339,15 @@ func _resolve_collisions() -> void:
 func _update_bubble_uniforms() -> void:
 	if not _bubble_material:
 		return
-	var r := _get_bubble_radius() + BUBBLE_PADDING
+	var r: float
+	if _popping and not letters.is_empty():
+		# Expand to encompass all flying letters
+		var max_dist := 0.0
+		for l in letters:
+			max_dist = maxf(max_dist, l.position.length())
+		r = max_dist + METABALL_RADIUS + BUBBLE_PADDING
+	else:
+		r = _get_bubble_radius() + BUBBLE_PADDING
 	_bubble_sprite.scale = Vector2(r, r)
 	var rect_size := Vector2(r * 2.0, r * 2.0)
 	_bubble_material.set_shader_parameter("rect_size", rect_size)

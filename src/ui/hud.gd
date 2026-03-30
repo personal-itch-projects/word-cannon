@@ -10,6 +10,8 @@ var font_bold: Font
 var screen_size: Vector2
 var _arsenal_sprites: Array[Sprite2D] = []
 var _arsenal_positions: Array[Vector2] = []
+var _speed_button_rect: Rect2
+var _speed_hover: bool = false
 
 @onready var platform: Node2D = get_node("/root/Main/GameLayer/Platform")
 
@@ -17,6 +19,7 @@ func _ready() -> void:
 	font = preload("res://assets/fonts/Nunito/Nunito-Regular.ttf")
 	font_bold = preload("res://assets/fonts/Nunito/Nunito-Bold.ttf")
 	screen_size = get_viewport().get_visible_rect().size
+	_speed_button_rect = Rect2(screen_size.x - 70, 20, 50, 30)
 	_setup_arsenal_bubbles()
 	GameManager.score_changed.connect(_on_score_changed)
 	GameManager.level_changed.connect(_on_level_changed)
@@ -25,7 +28,19 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	if visible:
+		var mouse_pos := get_viewport().get_mouse_position()
+		_speed_hover = _speed_button_rect.has_point(mouse_pos)
 		queue_redraw()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not visible:
+		return
+	if GameManager.current_state != GameState.State.PLAYING:
+		return
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if _speed_button_rect.has_point(event.position):
+			GameManager.cycle_speed()
+			get_viewport().set_input_as_handled()
 
 func _on_score_changed(_score: int) -> void:
 	queue_redraw()
@@ -61,6 +76,9 @@ func _draw() -> void:
 	# Arsenal bubbles (update visibility and draw letters)
 	_update_arsenal_bubbles()
 	_draw_arsenal_letters()
+
+	# Speed button (top-right)
+	_draw_speed_button()
 
 func _setup_arsenal_bubbles() -> void:
 	var shader := preload("res://src/shaders/metaball_bubble.gdshader")
@@ -127,3 +145,24 @@ func _draw_arsenal_letters() -> void:
 		var pos := _arsenal_positions[i]
 		var text_size := font.get_string_size(letter, HORIZONTAL_ALIGNMENT_CENTER, -1, ARSENAL_FONT_SIZE)
 		draw_string(font, Vector2(pos.x - text_size.x / 2.0, pos.y + text_size.y / 4.0), letter, HORIZONTAL_ALIGNMENT_CENTER, -1, ARSENAL_FONT_SIZE, Color("#1A1A1A"))
+
+func _draw_speed_button() -> void:
+	var active := GameManager.speed_multiplier > 1.0
+	var bg_color := Color("#1A1A1A") if active else Color.WHITE
+	var text_color := Color.WHITE if active else Color("#1A1A1A")
+	var border_color := Color("#CC3333") if _speed_hover and not active else Color("#1A1A1A")
+	draw_rect(_speed_button_rect, bg_color)
+	draw_rect(_speed_button_rect, border_color, false, 2.0)
+	var speed_text: String
+	if GameManager.speed_multiplier == 1.0:
+		speed_text = "x1"
+	elif GameManager.speed_multiplier == 1.5:
+		speed_text = "x1.5"
+	else:
+		speed_text = "x2"
+	var text_size := font.get_string_size(speed_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 16)
+	var text_pos := Vector2(
+		_speed_button_rect.position.x + _speed_button_rect.size.x / 2.0 - text_size.x / 2.0,
+		_speed_button_rect.position.y + _speed_button_rect.size.y / 2.0 + text_size.y / 4.0
+	)
+	draw_string(font, text_pos, speed_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 16, text_color)

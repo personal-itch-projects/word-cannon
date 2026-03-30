@@ -22,6 +22,10 @@ var bindings: Dictionary = {
 }
 var language: String = "en"
 
+const SPEED_OPTIONS := [1.0, 1.5, 2.0]
+var speed_multiplier: float = 1.0
+var _speed_index: int = 0
+
 var previous_state: GameState.State = GameState.State.MAIN_MENU
 var is_resuming: bool = false
 var _level_elapsed: float = 0.0
@@ -129,6 +133,8 @@ func reset_game() -> void:
 	current_level = 0
 	level_timer = 0.0
 	_level_elapsed = 0.0
+	speed_multiplier = 1.0
+	_speed_index = 0
 	score_changed.emit(score)
 	lives_changed.emit(lives)
 	level_changed.emit(current_level)
@@ -155,6 +161,10 @@ func resume_game() -> void:
 	is_resuming = true
 	change_state(GameState.State.PLAYING)
 	is_resuming = false
+
+func cycle_speed() -> void:
+	_speed_index = (_speed_index + 1) % SPEED_OPTIONS.size()
+	speed_multiplier = SPEED_OPTIONS[_speed_index]
 
 const SAVE_PATH := "user://high_score.dat"
 
