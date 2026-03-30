@@ -8,7 +8,13 @@ var sfx_bubble_pop: Array[AudioStream] = [
 	preload("res://assets/sfx/bubble_pop_3.wav"),
 	preload("res://assets/sfx/bubble_pop_4.wav"),
 ]
-var sfx_bubble_pop_word: AudioStream = preload("res://assets/sfx/bubble-pop-with-existing-word-1.wav")
+var sfx_bubble_pop_word: Array[AudioStream] = [
+	preload("res://assets/sfx/word_pop_1.wav"),
+	preload("res://assets/sfx/word_pop_2.wav"),
+	preload("res://assets/sfx/word_pop_3.wav"),
+	preload("res://assets/sfx/word_pop_4.wav"),
+	preload("res://assets/sfx/word_pop_5.wav"),
+]
 var sfx_cannon_move: AudioStream = preload("res://assets/sfx/cannon-move-1.wav")
 var sfx_bubble_fire: Array[AudioStream] = [
 	preload("res://assets/sfx/bubble_fire_1.wav"),
