@@ -14,6 +14,7 @@ var _ship_node: Node3D
 var _cannon_node: Node3D
 var _ship_root: Node3D  # Root 3D node that holds ship + cannon
 var _current_facing: float = 0.0  # Y rotation of ship (0 = right-facing, PI = left-facing)
+var _last_cannon_angle: float = 0.0
 var _turn_tween: Tween
 
 func _ready() -> void:
@@ -24,8 +25,8 @@ func _setup_viewport() -> void:
 	_viewport = SubViewport.new()
 	_viewport.size = VIEWPORT_SIZE
 	_viewport.transparent_bg = true
-	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	_viewport.msaa_3d = SubViewport.MSAA_4X
+	_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	_viewport.msaa_3d = SubViewport.MSAA_2X
 	add_child(_viewport)
 
 	# Create 3D scene root
@@ -84,12 +85,14 @@ func _setup_viewport() -> void:
 	add_child(_sprite)
 
 func set_cannon_angle(angle: float) -> void:
-	if _cannon_node:
+	if _cannon_node and not is_equal_approx(angle, _last_cannon_angle):
+		_last_cannon_angle = angle
 		# 2D cannon_angle: 0 = up, positive = right, negative = left
 		# In 3D with camera looking from behind+above, Y-axis rotation sweeps left/right
 		# When ship is flipped (facing left), negate to compensate for parent rotation
 		var compensated := angle if _current_facing < PI * 0.5 else -angle
 		_cannon_node.rotation.y = -compensated
+		_request_update()
 
 func set_ship_direction(direction: float) -> void:
 	## direction: -1.0 (left), 0.0 (no change), 1.0 (right)
@@ -108,5 +111,11 @@ func set_ship_direction(direction: float) -> void:
 
 	if _turn_tween:
 		_turn_tween.kill()
+	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_turn_tween = create_tween()
 	_turn_tween.tween_property(_ship_root, "rotation:y", target_y, SHIP_TURN_DURATION)
+	_turn_tween.tween_callback(func(): _viewport.render_target_update_mode = SubViewport.UPDATE_ONCE)
+
+func _request_update() -> void:
+	if _viewport:
+		_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE

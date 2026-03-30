@@ -74,7 +74,7 @@ func reset() -> void:
 	_ship_visual = null
 	_fill_arsenal()
 	for child in get_children():
-		child.queue_free()
+		child.free()
 	_create_loaded_projectile()
 	_create_ship_visual()
 

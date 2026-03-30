@@ -87,7 +87,6 @@ func _on_state_changed(new_state: GameState.State) -> void:
 			main_menu.visible = true
 			menu_letter_spawner.visible = true
 			menu_letter_spawner.set_process(true)
-			SfxManager.stop_cannon_move()
 			_clear_gameplay()
 		GameState.State.PLAYING:
 			hud.visible = true
@@ -104,18 +103,18 @@ func _on_state_changed(new_state: GameState.State) -> void:
 		GameState.State.DEFEAT:
 			defeat_screen.visible = true
 			hud.visible = true
-			SfxManager.stop_cannon_move()
 			_clear_gameplay()
 		GameState.State.PAUSED:
 			pause_menu.visible = true
 			hud.visible = true
 			SfxManager.play(SfxManager.sfx_pause_opened)
-			SfxManager.stop_cannon_move()
 		GameState.State.STAGE_COMPLETE:
 			stage_complete_screen.visible = true
 			hud.visible = true
 			letter_spawner.set_process(false)
-			SfxManager.stop_cannon_move()
+
+	if new_state != GameState.State.PLAYING:
+		SfxManager.stop_cannon_move()
 
 func _clear_gameplay() -> void:
 	_theme_intro.cancel()
