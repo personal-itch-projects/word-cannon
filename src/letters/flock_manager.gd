@@ -41,6 +41,7 @@ func _try_click_flock(click_pos: Vector2) -> void:
 				flock.pop_word(exact["word"])
 				SfxManager.play_random(SfxManager.sfx_bubble_pop_word)
 			else:
+				GameManager.lose_life()
 				flock.pop()
 				SfxManager.play_random(SfxManager.sfx_bubble_pop)
 			get_viewport().set_input_as_handled()

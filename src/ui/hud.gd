@@ -20,6 +20,7 @@ func _ready() -> void:
 	_setup_arsenal_bubbles()
 	GameManager.score_changed.connect(_on_score_changed)
 	GameManager.level_changed.connect(_on_level_changed)
+	GameManager.lives_changed.connect(_on_lives_changed)
 	_on_score_changed(GameManager.score)
 
 func _process(_delta: float) -> void:
@@ -32,9 +33,19 @@ func _on_score_changed(_score: int) -> void:
 func _on_level_changed(_level: int) -> void:
 	queue_redraw()
 
+func _on_lives_changed(_lives: int) -> void:
+	queue_redraw()
+
 func _draw() -> void:
 	# Score
 	draw_string(font_bold, Vector2(20, 40), GameManager.tr_text("SCORE") + ": " + str(GameManager.score), HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color("#1A1A1A"))
+
+	# Lives (right of score)
+	var score_text := GameManager.tr_text("SCORE") + ": " + str(GameManager.score)
+	var score_width := font_bold.get_string_size(score_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 28).x
+	var lives_text := "x" + str(GameManager.lives)
+	var lives_color := Color("#CC3333") if GameManager.lives <= 1 else Color("#1A1A1A")
+	draw_string(font_bold, Vector2(20 + score_width + 20, 40), lives_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 28, lives_color)
 
 	# Level
 	draw_string(font_bold, Vector2(20, 70), GameManager.tr_text("LEVEL") + ": " + str(GameManager.current_level + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color("#1A1A1A"))

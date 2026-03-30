@@ -3,8 +3,9 @@ extends Node
 signal state_changed(new_state: GameState.State)
 signal score_changed(new_score: int)
 signal level_changed(new_level: int)
+signal lives_changed(new_lives: int)
 
-const BOTTOM_PENALTY := 10
+const INITIAL_LIVES := 3
 const LEVEL_DURATION := 45.0
 const PLAY_AREA_WIDTH := 800.0
 const MIN_WINDOW_SIZE := Vector2i(960, 540)
@@ -12,6 +13,7 @@ const MIN_WINDOW_SIZE := Vector2i(960, 540)
 var current_state: GameState.State = GameState.State.MAIN_MENU
 var score: int = 0
 var high_score: int = 0
+var lives: int = INITIAL_LIVES
 var current_level: int = 0
 var level_timer: float = 0.0
 var bindings: Dictionary = {
@@ -102,22 +104,33 @@ func add_score(amount: int) -> void:
 	score_changed.emit(score)
 
 func on_word_formed(_word_length: int) -> void:
-	pass
+	add_life()
+
+func add_life() -> void:
+	lives += 1
+	lives_changed.emit(lives)
+
+func lose_life() -> void:
+	lives = maxi(lives - 1, 0)
+	lives_changed.emit(lives)
+	if lives <= 0:
+		change_state(GameState.State.DEFEAT)
 
 func _advance_level() -> void:
 	current_level += 1
 	level_changed.emit(current_level)
 
 func penalize_bottom() -> void:
-	score = maxi(score - BOTTOM_PENALTY, 0)
-	score_changed.emit(score)
+	lose_life()
 
 func reset_game() -> void:
 	score = 0
+	lives = INITIAL_LIVES
 	current_level = 0
 	level_timer = 0.0
 	_level_elapsed = 0.0
 	score_changed.emit(score)
+	lives_changed.emit(lives)
 	level_changed.emit(current_level)
 
 func start_game() -> void:
