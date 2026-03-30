@@ -12,7 +12,8 @@ on:
 
 env:
   GODOT_VERSION: "4.6"
-  ITCH_GAME: "praytic/word-cannon"
+  ITCH_GAME_EN: "praytic/word-plunder"
+  ITCH_GAME_RU: "praytic/more-slov"
 
 jobs:
   export:
@@ -87,17 +88,32 @@ jobs:
           chmod +x butler-bin/butler
           echo "$PWD/butler-bin" >> $GITHUB_PATH
 
-      - name: Push Windows build
-        run: butler push build/windows ${{ env.ITCH_GAME }}:windows --userversion ${{ steps.version.outputs.version }}
+      - name: Push Windows build (EN)
+        run: butler push build/windows ${{ env.ITCH_GAME_EN }}:windows --userversion ${{ steps.version.outputs.version }}
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
 
-      - name: Push Linux build
-        run: butler push build/linux ${{ env.ITCH_GAME }}:linux --userversion ${{ steps.version.outputs.version }}
+      - name: Push Linux build (EN)
+        run: butler push build/linux ${{ env.ITCH_GAME_EN }}:linux --userversion ${{ steps.version.outputs.version }}
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
 
-      - name: Push Web build
-        run: butler push build/web ${{ env.ITCH_GAME }}:web --userversion ${{ steps.version.outputs.version }}
+      - name: Push Web build (EN)
+        run: butler push build/web ${{ env.ITCH_GAME_EN }}:web --userversion ${{ steps.version.outputs.version }}
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+
+      - name: Push Windows build (RU)
+        run: butler push build/windows ${{ env.ITCH_GAME_RU }}:windows --userversion ${{ steps.version.outputs.version }}
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+
+      - name: Push Linux build (RU)
+        run: butler push build/linux ${{ env.ITCH_GAME_RU }}:linux --userversion ${{ steps.version.outputs.version }}
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+
+      - name: Push Web build (RU)
+        run: butler push build/web ${{ env.ITCH_GAME_RU }}:web --userversion ${{ steps.version.outputs.version }}
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
